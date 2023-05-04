@@ -1,6 +1,8 @@
 plugins {
 	id 'java'
+	id 'application'
 	id 'com.diffplug.spotless' version '6.17.0'
+	id 'com.github.ben-manes.versions' version '0.46.0'
 }
 
 repositories {
@@ -17,34 +19,48 @@ java {
 	targetCompatibility = '17'
 }
 
-allprojects {
-	apply plugin: 'java'
+ext.gdxVersion = '1.11.0'
+dependencies {
+	// libGDX
+	implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
+	implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+	runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+	implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+	runtimeOnly "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
 
-	tasks.withType(JavaCompile).configureEach {
-		options.compilerArgs << '-Xdiags:verbose'
-		options.compilerArgs << '-Xlint:all,-serial,-processing'
-		options.compilerArgs << '-Werror'
-		options.deprecation = true
-		options.encoding = 'UTF-8'
-	}
+	// utility stuff
+	implementation 'com.google.guava:guava:31.1-jre'
+}
 
-	// cleanup tasks
-	clean.dependsOn('cleanDLLs', 'cleanDyLibs', 'cleanLogs', 'cleanSOs', 'cleanBin')
-	tasks.register('cleanDLLs', Delete) {
-		delete fileTree(dir: project.projectDir, include: '*.dll')
-	}
-	tasks.register('cleanDyLibs', Delete) {
-		delete fileTree(dir: project.projectDir, include: '*.dylib')
-	}
-	tasks.register('cleanLogs', Delete) {
-		delete fileTree(dir: project.projectDir, include: 'hs_err_pid*.log')
-	}
-	tasks.register('cleanSOs', Delete) {
-		delete fileTree(dir: project.projectDir, include: '*.so')
-	}
-	tasks.register('cleanBin', Delete) {
-		delete "${project.projectDir}/bin"
-	}
+application {
+	mainClass = 'com.ledmington.solarsystem.Launcher'
+}
+
+
+tasks.withType(JavaCompile).configureEach {
+	options.compilerArgs << '-Xdiags:verbose'
+	options.compilerArgs << '-Xlint:all,-serial,-processing'
+	options.compilerArgs << '-Werror'
+	options.deprecation = true
+	options.encoding = 'UTF-8'
+}
+
+// cleanup tasks
+clean.dependsOn('cleanDLLs', 'cleanDyLibs', 'cleanLogs', 'cleanSOs', 'cleanBin')
+tasks.register('cleanDLLs', Delete) {
+	delete fileTree(dir: project.projectDir, include: '*.dll')
+}
+tasks.register('cleanDyLibs', Delete) {
+	delete fileTree(dir: project.projectDir, include: '*.dylib')
+}
+tasks.register('cleanLogs', Delete) {
+	delete fileTree(dir: project.projectDir, include: 'hs_err_pid*.log')
+}
+tasks.register('cleanSOs', Delete) {
+	delete fileTree(dir: project.projectDir, include: '*.so')
+}
+tasks.register('cleanBin', Delete) {
+	delete "${project.projectDir}/bin"
 }
 
 spotless {
@@ -93,6 +109,4 @@ spotless {
 	}
 }
 
-task format {
-	allprojects.each { it.tasks.compileJava.dependsOn(spotlessApply) }
-}
+tasks.compileJava.dependsOn(spotlessApply)

@@ -17,12 +17,14 @@
 */
 package com.ledmington.solarsystem;
 
+import java.awt.Toolkit;
+
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 
-public final class Main extends Game {
+public final class Launcher extends Game {
     public static void main(final String[] args) {
 
         if (args.length > 0) {
@@ -31,17 +33,20 @@ public final class Main extends Game {
 
         final Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 
-        config.setWindowedMode(480, 800);
+        config.setWindowedMode(
+                (int) Toolkit.getDefaultToolkit().getScreenSize().getWidth() / 2,
+                (int) Toolkit.getDefaultToolkit().getScreenSize().getHeight() / 2);
+        config.setTitle("Solar System");
         config.useVsync(true);
+        config.setIdleFPS(30);
         config.setForegroundFPS(60);
-        config.setResizable(false);
+        config.setResizable(true);
         config.setWindowIcon(FileType.Internal, "images/icon.png");
-        new Lwjgl3Application(new Main(), config);
+        new Lwjgl3Application(new Launcher(), config);
     }
 
     @Override
     public void create() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'create'");
+        this.setScreen(new MainScreen());
     }
 }

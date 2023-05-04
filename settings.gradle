@@ -1,3 +1,1 @@
 rootProject.name = 'solar-system'
-include('model')
-include('view')

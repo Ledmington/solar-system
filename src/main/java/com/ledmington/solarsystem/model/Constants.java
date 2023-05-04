@@ -15,6 +15,15 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-package com.ledmington.solarsystem;
+package com.ledmington.solarsystem.model;
 
-public record Planet(String name, double radius, double mass) {}
+public final class Constants {
+    private Constants() {}
+
+    public static final double GRAVITATIONAL_CONSTANT = 6.6743e-11;
+
+    /**
+     * One AU in meters.
+     */
+    public static final double oneAstronomicalUnit = 150_000_000_000.0;
+}
