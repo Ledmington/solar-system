@@ -17,8 +17,10 @@
 */
 package com.ledmington.solarsystem;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
@@ -41,6 +43,9 @@ import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.model.NodePart;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.ledmington.solarsystem.model.Body;
@@ -53,7 +58,8 @@ public final class MainScreen implements Screen {
 
     private final AssetManager assetManager;
     private final PerspectiveCamera camera;
-    private final float cameraSpeed = 0.01f;
+    private final float initialCameraSpeed = 0.01f;
+    private float cameraSpeed = initialCameraSpeed;
     private final CameraInputController camController;
     private final Array<Model> models = new Array<>();
     private final Array<ModelInstance> instances = new Array<>();
@@ -66,6 +72,7 @@ public final class MainScreen implements Screen {
     private boolean loading;
     private final String skyBoxFileName = "models/skybox.obj";
     private ModelInstance skyBox;
+    private final ShapeRenderer shapeRenderer;
 
     public MainScreen() {
         environment = new Environment();
@@ -73,7 +80,7 @@ public final class MainScreen implements Screen {
         environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 
         camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        camera.position.set(2f, 2f, 2f);
+        camera.position.set(100.0f, 100.0f, 100.0f);
         camera.lookAt(0, 0, 0);
         camera.near = 0.1f;
         camera.far = 1_000_000.0f;
@@ -87,8 +94,7 @@ public final class MainScreen implements Screen {
         renderable.worldTransform.idt();
 
         // creating and adding the models
-        for (int i = 0; i < SolarSystem.planets.size(); i++) {
-            final Body b = SolarSystem.planets.get(i);
+        for (final Body b : SolarSystem.planets) {
             final float scaledRadius = (float) (b.radius() * scale);
             System.out.println(b.name() + " -> " + scaledRadius + " m -> " + ((int) (b.position().x * scale)) + " m");
 
@@ -99,7 +105,7 @@ public final class MainScreen implements Screen {
                             scaledRadius,
                             20,
                             20,
-                            new Material(),
+                            new Material(new ColorAttribute(ColorAttribute.Diffuse, b.color())),
                             Usage.Position | Usage.Normal | Usage.TextureCoordinates);
             models.add(model);
             final ModelInstance instance =
@@ -113,6 +119,8 @@ public final class MainScreen implements Screen {
         }
 
         modelBatch = new ModelBatch();
+
+        shapeRenderer = new ShapeRenderer();
 
         assetManager = new AssetManager();
         assetManager.load(skyBoxFileName, Model.class);
@@ -143,43 +151,98 @@ public final class MainScreen implements Screen {
 
         modelBatch.begin(camera);
 
+        // rendering skybox
         if (skyBox != null) {
             skyBox.transform.setToTranslation(camera.position);
+            skyBox.transform.scl(1_000.0f);
             modelBatch.render(skyBox);
         }
 
-        spriteBatch.begin();
+        final Map<Body, Vector2> bodyToLabelPosition = new HashMap<>();
+
+        // rendering planets
         for (final ModelInstance instance : instances) {
-            modelBatch.render(instance, environment);
             if (isVisible(camera, instance)) {
+                modelBatch.render(instance, environment);
                 final Body b = modelToBody.get(instance);
                 final Vector3 labelPosition = camera.project(new Vector3(
                         (float) ((b.position().x + b.radius()) * scale),
                         (float) ((b.position().y + b.radius()) * scale),
                         (float) (b.position().z * scale)));
-
-                font.draw(spriteBatch, b.name(), labelPosition.x + 10, labelPosition.y + 10);
+                bodyToLabelPosition.put(b, new Vector2(labelPosition.x, labelPosition.y));
             }
         }
-        System.out.println();
-        spriteBatch.end();
         modelBatch.end();
+
+        spriteBatch.begin();
+        for (final Entry<Body, Vector2> entry : bodyToLabelPosition.entrySet()) {
+            final Body b = entry.getKey();
+            final Vector2 labelPosition = entry.getValue();
+            // draw red label
+            font.setColor(1.0f, 0.0f, 0.0f, 1.0f);
+            font.draw(spriteBatch, b.name(), labelPosition.x + 10, labelPosition.y + 10);
+        }
+        spriteBatch.end();
+
+        shapeRenderer.begin(ShapeType.Line);
+        for (final Entry<Body, Vector2> entry : bodyToLabelPosition.entrySet()) {
+            final Body b = entry.getKey();
+            final Vector2 labelPosition = entry.getValue();
+            final Vector3 tmp = camera.project(
+                    new Vector3((float) (b.position().x * scale), (float) (b.position().y * scale), 0.0f));
+            final Vector2 bodyPositionOnScreen = new Vector2(tmp.x, tmp.y);
+
+            // draw white line from label to body
+            shapeRenderer.line(bodyPositionOnScreen, labelPosition);
+
+            // draw circle around body
+            shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, (float) (b.radius() * scale + 10));
+        }
+        shapeRenderer.end();
+
+        final Body closestBody = SolarSystem.planets.stream()
+                .sorted(Comparator.comparing(
+                        b -> new Vector3(b.position()).scl((float) scale).dst(camera.position)))
+                .findFirst()
+                .orElseThrow();
+        System.out.printf(
+                "Closest body: %s (%e)\n",
+                closestBody.name(),
+                new Vector3(closestBody.position()).scl((float) scale).dst(camera.position));
 
         if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP)) {
             camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
         }
         if (Gdx.input.isKeyPressed(Keys.S) || Gdx.input.isKeyPressed(Keys.DOWN)) {
             camera.position.sub(new Vector3(camera.direction).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
         }
         if (Gdx.input.isKeyPressed(Keys.A) || Gdx.input.isKeyPressed(Keys.LEFT)) {
             camera.position.add(
                     new Vector3(camera.direction).rotate(camera.up, -90.0f).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
         }
         if (Gdx.input.isKeyPressed(Keys.D) || Gdx.input.isKeyPressed(Keys.RIGHT)) {
             camera.position.add(
                     new Vector3(camera.direction).rotate(camera.up, 90.0f).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
         }
+
+        if (!Gdx.input.isKeyPressed(Keys.W)
+                && !Gdx.input.isKeyPressed(Keys.A)
+                && !Gdx.input.isKeyPressed(Keys.S)
+                && !Gdx.input.isKeyPressed(Keys.D)
+                && !Gdx.input.isKeyPressed(Keys.UP)
+                && !Gdx.input.isKeyPressed(Keys.DOWN)
+                && !Gdx.input.isKeyPressed(Keys.RIGHT)
+                && !Gdx.input.isKeyPressed(Keys.LEFT)) {
+            cameraSpeed = initialCameraSpeed;
+        }
+
         camera.update();
+
+        bodyToLabelPosition.clear();
     }
 
     /**
@@ -213,8 +276,10 @@ public final class MainScreen implements Screen {
 
     @Override
     public void dispose() {
-        models.forEach(m -> dispose());
+        font.dispose();
+        models.forEach(m -> m.dispose());
         modelBatch.dispose();
         spriteBatch.dispose();
+        shapeRenderer.dispose();
     }
 }

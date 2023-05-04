@@ -19,6 +19,7 @@ package com.ledmington.solarsystem.model;
 
 import java.util.List;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
 import com.google.common.collect.ImmutableList;
 
@@ -32,6 +33,7 @@ public final class SolarSystem {
                     .mass(1.98847e30)
                     .position(Vector3.Zero)
                     .speed(Vector3.Zero)
+                    .color(Color.GOLD)
                     .build())
             .add(Body.builder()
                     .name("Mercury")
@@ -39,6 +41,7 @@ public final class SolarSystem {
                     .mass(3.3011e23)
                     .position(new Vector3((float) (0.307 * Constants.oneAstronomicalUnit), 0, 0))
                     .speed(new Vector3(0, 47_360, 0))
+                    .color(Color.BROWN)
                     .build())
             .add(Body.builder()
                     .name("Venus")
@@ -53,6 +56,7 @@ public final class SolarSystem {
                     .mass(5.9722e24)
                     .position(new Vector3((float) (1.0 * Constants.oneAstronomicalUnit), 0, 0))
                     .speed(new Vector3(0, 29_782.7f, 0))
+                    .color(Color.BLUE)
                     .build())
             .add(Body.builder()
                     .name("Moon")
@@ -60,6 +64,7 @@ public final class SolarSystem {
                     .mass(7.346e22)
                     .position(Vector3.Zero)
                     .speed(Vector3.Zero)
+                    .color(Color.GRAY)
                     .build())
             .add(Body.builder()
                     .name("Mars")
@@ -67,6 +72,7 @@ public final class SolarSystem {
                     .mass(6.4171e23)
                     .position(new Vector3((float) (1.382 * Constants.oneAstronomicalUnit), 0, 0))
                     .speed(new Vector3(0, 24_070, 0))
+                    .color(Color.ORANGE)
                     .build())
             .add(Body.builder()
                     .name("Phobos")
@@ -88,6 +94,7 @@ public final class SolarSystem {
                     .mass(1.8982e27)
                     .position(new Vector3((float) (5.2 * Constants.oneAstronomicalUnit), 0, 0))
                     .speed(new Vector3(0, 13_070, 0))
+                    .color(Color.RED)
                     .build())
             .add(Body.builder()
                     .name("Io")

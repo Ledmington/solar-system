@@ -17,9 +17,13 @@
 */
 package com.ledmington.solarsystem.model;
 
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
+import com.google.common.collect.ImmutableMap;
 
 public final class Body {
 
@@ -32,13 +36,15 @@ public final class Body {
     private final double massInKilograms;
     private Vector3 position;
     private Vector3 speed;
+    private final Color color;
 
     public Body(
             final String name,
             final double radiusInMeters,
             final double massInKilograms,
             final Vector3 position,
-            final Vector3 speed) {
+            final Vector3 speed,
+            final Color color) {
         if (name == null || name.isEmpty() || name.isBlank()) {
             this.name = Optional.empty();
         } else {
@@ -48,6 +54,7 @@ public final class Body {
         this.massInKilograms = massInKilograms;
         this.position = position;
         this.speed = speed;
+        this.color = color;
     }
 
     public String name() {
@@ -60,5 +67,49 @@ public final class Body {
 
     public Vector3 position() {
         return this.position;
+    }
+
+    public Color color() {
+        return this.color;
+    }
+
+    public String toString() {
+        return "Body("
+                + ImmutableMap.<String, String>builder()
+                        .put("name", name.isPresent() ? name.get() : "N/A")
+                        .put("radius", String.valueOf(radiusInMeters))
+                        .put("mass", String.valueOf(massInKilograms))
+                        .put("position", position.toString())
+                        .put("speed", speed.toString())
+                        .put("color", color.toString())
+                        .build()
+                        .entrySet()
+                        .stream()
+                        .map(entry -> entry.getKey() + "=" + entry.getValue())
+                        .collect(Collectors.joining(","))
+                + ")";
+    }
+
+    public boolean equals(final Object other) {
+        if (other == null) {
+            return false;
+        }
+        if (this == other) {
+            return true;
+        }
+        if (!this.getClass().equals(other.getClass())) {
+            return false;
+        }
+        final Body b = (Body) other;
+        return name.equals(b.name)
+                && radiusInMeters == b.radiusInMeters
+                && massInKilograms == b.massInKilograms
+                && position.equals(b.position)
+                && speed.equals(b.speed)
+                && color.equals(b.color);
+    }
+
+    public int hashCode() {
+        return Objects.hash(name, radiusInMeters, massInKilograms, position, speed, color);
     }
 }

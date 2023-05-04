@@ -17,6 +17,7 @@
 */
 package com.ledmington.solarsystem.model;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
 
 public final class BodyBuilder {
@@ -25,6 +26,7 @@ public final class BodyBuilder {
     private double massInKilograms = -1.0;
     private Vector3 position = Vector3.Zero;
     private Vector3 speed = Vector3.Zero;
+    private Color color = Color.WHITE;
 
     public BodyBuilder() {}
 
@@ -53,6 +55,11 @@ public final class BodyBuilder {
         return this;
     }
 
+    public BodyBuilder color(final Color color) {
+        this.color = color;
+        return this;
+    }
+
     public Body build() {
         if (radiusInMeters < 0) {
             throw new IllegalArgumentException("Cannot create a body without radius");
@@ -60,6 +67,6 @@ public final class BodyBuilder {
         if (massInKilograms < 0) {
             throw new IllegalArgumentException("Cannot create a body without mass");
         }
-        return new Body(this.name, this.radiusInMeters, this.massInKilograms, this.position, this.speed);
+        return new Body(this.name, this.radiusInMeters, this.massInKilograms, this.position, this.speed, this.color);
     }
 }
