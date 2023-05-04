@@ -1,0 +1,98 @@
+plugins {
+	id 'java'
+	id 'com.diffplug.spotless' version '6.17.0'
+}
+
+repositories {
+	mavenCentral()
+}
+
+String author = 'Filippo Barbari'
+String authorMail = 'filippo.barbari@gmail.com'
+String appName = 'solarsystem'
+String appDescription = 'A real-time solar system simulation.'
+
+java {
+	sourceCompatibility = '17'
+	targetCompatibility = '17'
+}
+
+allprojects {
+	apply plugin: 'java'
+
+	tasks.withType(JavaCompile).configureEach {
+		options.compilerArgs << '-Xdiags:verbose'
+		options.compilerArgs << '-Xlint:all,-serial,-processing'
+		options.compilerArgs << '-Werror'
+		options.deprecation = true
+		options.encoding = 'UTF-8'
+	}
+
+	// cleanup tasks
+	clean.dependsOn('cleanDLLs', 'cleanDyLibs', 'cleanLogs', 'cleanSOs', 'cleanBin')
+	tasks.register('cleanDLLs', Delete) {
+		delete fileTree(dir: project.projectDir, include: '*.dll')
+	}
+	tasks.register('cleanDyLibs', Delete) {
+		delete fileTree(dir: project.projectDir, include: '*.dylib')
+	}
+	tasks.register('cleanLogs', Delete) {
+		delete fileTree(dir: project.projectDir, include: 'hs_err_pid*.log')
+	}
+	tasks.register('cleanSOs', Delete) {
+		delete fileTree(dir: project.projectDir, include: '*.so')
+	}
+	tasks.register('cleanBin', Delete) {
+		delete "${project.projectDir}/bin"
+	}
+}
+
+spotless {
+	format 'misc', {
+		target '*.gradle', '*.md', '.gitignore'
+		trimTrailingWhitespace()
+		indentWithTabs()
+		endWithNewline()
+		setEncoding('utf-8')
+	}
+
+	java {
+		target fileTree('.') {
+			include '**/*.java'
+			exclude '**/build/**', '**/build-*/**', '**/bin/**'
+		}
+		removeUnusedImports()
+		formatAnnotations()
+		trimTrailingWhitespace()
+		endWithNewline()
+		setEncoding('utf-8')
+		palantirJavaFormat('2.26.0')
+
+		// check https://javadoc.io/doc/com.diffplug.spotless/spotless-plugin-gradle/latest/com/diffplug/gradle/spotless/JavaExtension.html
+		importOrder('java', 'javax', 'javafx', 'com', 'org', group)
+
+		licenseHeader String.join("\n",
+			"/*",
+			"* ${appName} - ${appDescription}",
+			"* Copyright (C) 2023-${new Date().format('yyyy')} ${author} <${authorMail}>",
+			"*",
+			"* This program is free software: you can redistribute it and/or modify",
+			"* it under the terms of the GNU General Public License as published by",
+			"* the Free Software Foundation, either version 3 of the License, or",
+			"* (at your option) any later version.",
+			"*",
+			"* This program is distributed in the hope that it will be useful,",
+			"* but WITHOUT ANY WARRANTY; without even the implied warranty of",
+			"* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
+			"* GNU General Public License for more details.",
+			"*",
+			"* You should have received a copy of the GNU General Public License",
+			"* along with this program.  If not, see <http://www.gnu.org/licenses/>.",
+			"*/",
+		)
+	}
+}
+
+task format {
+	allprojects.each { it.tasks.compileJava.dependsOn(spotlessApply) }
+}
