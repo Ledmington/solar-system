@@ -27,6 +27,7 @@ import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Camera;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
@@ -149,17 +150,30 @@ public final class MainScreen implements Screen {
         Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
 
-        modelBatch.begin(camera);
-
         // rendering skybox
         if (skyBox != null) {
+            modelBatch.begin(camera);
             skyBox.transform.setToTranslation(camera.position);
             skyBox.transform.scl(1_000.0f);
             modelBatch.render(skyBox);
+            modelBatch.end();
         }
+
+        spriteBatch.begin();
+        font.setColor(Color.GREEN);
+        font.draw(spriteBatch, String.format("FPS: %3.1f", 1 / delta), 0.0f, 20.0f);
+        spriteBatch.end();
 
         final Map<Body, Vector2> bodyToLabelPosition = new HashMap<>();
 
+        /**
+         * The bodies don't have a proper hitbox, we consider the circle we draw
+         * around them as an hitbox.
+         * The Vector3 stored as value is in fact the 2D position and the radius of the circle.
+         */
+        final Map<Body, Vector3> bodyToHitbox = new HashMap<>();
+
+        modelBatch.begin(camera);
         // rendering planets
         for (final ModelInstance instance : instances) {
             if (isVisible(camera, instance)) {
@@ -196,7 +210,10 @@ public final class MainScreen implements Screen {
             shapeRenderer.line(bodyPositionOnScreen, labelPosition);
 
             // draw circle around body
-            shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, (float) (b.radius() * scale + 10));
+            final float circleRadius = (float) (b.radius() * scale + 10);
+            shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, circleRadius);
+
+            bodyToHitbox.put(b, new Vector3(bodyPositionOnScreen.x, bodyPositionOnScreen.y, circleRadius));
         }
         shapeRenderer.end();
 
@@ -210,6 +227,9 @@ public final class MainScreen implements Screen {
                 closestBody.name(),
                 new Vector3(closestBody.position()).scl((float) scale).dst(camera.position));
 
+        /*****************
+         * HANDLE INPUTS *
+         *****************/
         if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP)) {
             camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
@@ -240,9 +260,33 @@ public final class MainScreen implements Screen {
             cameraSpeed = initialCameraSpeed;
         }
 
+        // if the mouse is over a planet we highlight it
+        for (Entry<Body, Vector3> entry : bodyToHitbox.entrySet()) {
+            final Body b = entry.getKey();
+            final Vector2 bodyPositionOnScreen = new Vector2(entry.getValue().x, entry.getValue().y);
+            final float hitboxRadius = entry.getValue().z;
+
+            if (bodyPositionOnScreen.dst(Gdx.input.getX(), Gdx.graphics.getHeight() - Gdx.input.getY())
+                    < hitboxRadius) {
+                shapeRenderer.begin(ShapeType.Filled);
+                shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.1f);
+                shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, hitboxRadius);
+                shapeRenderer.end();
+
+                // if we click on the planet we look at it
+                if (Gdx.input.isTouched()) {
+                    camera.lookAt(new Vector3(b.position()).scl((float) scale));
+                }
+            }
+        }
+
         camera.update();
 
+        /***********************
+         * END HANDLING INPUTS *
+         ***********************/
         bodyToLabelPosition.clear();
+        bodyToHitbox.clear();
     }
 
     /**
