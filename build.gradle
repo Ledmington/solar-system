@@ -3,16 +3,25 @@ plugins {
 	id 'application'
 	id 'com.diffplug.spotless' version '6.17.0'
 	id 'com.github.ben-manes.versions' version '0.46.0'
+	id 'de.undercouch.download' version '5.4.0'
 }
 
 repositories {
 	mavenCentral()
 }
 
+String appName = 'solarsystem'
+String version = '0.1.0'
+String appDescription = 'A real-time solar system simulation.'
 String author = 'Filippo Barbari'
 String authorMail = 'filippo.barbari@gmail.com'
-String appName = 'solarsystem'
-String appDescription = 'A real-time solar system simulation.'
+String mainClassName = 'com.ledmington.solarsystem.Launcher'
+String fatJarPath = "${buildDir}/libs"
+String fatJarName = "${fatJarPath}/${appName}.jar"
+String toolsDir = "${buildDir}/tools"
+String distributionsDir = "${buildDir}/distributions"
+String linuxDistributionOutput = "${distributionsDir}/linux"
+String linuxDistributionName = "${appName}-linux.tar.gz"
 
 java {
 	sourceCompatibility = '17'
@@ -33,7 +42,7 @@ dependencies {
 }
 
 application {
-	mainClass = 'com.ledmington.solarsystem.Launcher'
+	mainClass = "${mainClassName}"
 }
 
 
@@ -85,7 +94,7 @@ spotless {
 		palantirJavaFormat('2.26.0')
 
 		// check https://javadoc.io/doc/com.diffplug.spotless/spotless-plugin-gradle/latest/com/diffplug/gradle/spotless/JavaExtension.html
-		importOrder('java', 'javax', 'javafx', 'com', 'org', group)
+		importOrder('java', 'javax', 'javafx', 'com', 'org', group as String)
 
 		licenseHeader String.join("\n",
 			"/*",
@@ -110,3 +119,68 @@ spotless {
 }
 
 tasks.compileJava.dependsOn(spotlessApply)
+
+tasks.register('fatJar', Jar) {
+	group 'distribution'
+	description 'Builds the fat jar of the application'
+	from sourceSets.main.output
+	dependsOn configurations.runtimeClasspath
+	from {
+		configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
+	}
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	manifest {
+		archiveBaseName = appName
+		attributes(
+				"Implementation-Version": "${version}",
+				"Main-Class": "${mainClassName}"
+		)
+	}
+
+	doLast {
+		println "The fat jar is ${fatJarName}"
+		println String.format("Fat jar size: %.3f MB", new File(fatJarName).length() / 1024 / 1024)
+	}
+}
+
+tasks.register('downloadPackr', Download) {
+	src "https://github.com/libgdx/packr/releases/download/4.0.0/packr-all-4.0.0.jar"
+	dest new File(toolsDir, '/packr.jar')
+	overwrite false
+}
+
+tasks.register('prepareLinuxDistribution', JavaExec) {
+	dependsOn([fatJar, downloadPackr])
+	group 'distribution'
+	classpath './build/tools/packr.jar'
+	args = [
+			'--platform', 'linux64',
+			'--jdk', 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_linux_hotspot_17.0.7_7.tar.gz',
+			'--useZgcIfSupportedOs',
+			'--executable', 'solarsystem',
+			'--classpath', "${fatJarName}",
+			'--mainclass', "${mainClassName}",
+			'--vmargs', 'Xmx1G',
+			'--resources', 'src/main/resources',
+			'--output', "${linuxDistributionOutput}"
+	]
+	println args
+}
+
+tasks.register('buildLinux', Zip) {
+	dependsOn prepareLinuxDistribution
+	group 'distribution'
+	description 'Zips the app distribution for Linux'
+	archiveFileName = "${linuxDistributionName}"
+	destinationDirectory = new File("${distributionsDir}")
+	from("${linuxDistributionOutput}") {
+		//include('**.sh')
+		//include('**/java')
+		include ("**/*")
+		fileMode 0755
+	}
+	doLast {
+		println "Linux distribution is ${distributionsDir}/${linuxDistributionName}"
+		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxDistributionName}").length() / 1024 / 1024)
+	}
+}
