@@ -24,19 +24,15 @@ import java.util.Map.Entry;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g3d.Environment;
 import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Model;
-import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
@@ -44,36 +40,33 @@ import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.model.NodePart;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.ledmington.solarsystem.model.Body;
 import com.ledmington.solarsystem.model.SolarSystem;
+import com.ledmington.solarsystem.utils.MiniLogger;
 
-public final class MainScreen implements Screen {
+public final class MainScreen extends AbstractScreen {
 
     // 10'000km : 1
     private static final double scale = 1.0 / 10_000_000.0;
+    private static final MiniLogger logger = MiniLogger.getLogger("MainScreen");
 
-    private final AssetManager assetManager;
     private final PerspectiveCamera camera;
-    private final float initialCameraSpeed = 0.01f;
+    private final float initialCameraSpeed = 0.1f;
     private float cameraSpeed = initialCameraSpeed;
     private final CameraInputController camController;
     private final Array<Model> models = new Array<>();
     private final Array<ModelInstance> instances = new Array<>();
     private final Renderable renderable;
-    private final ModelBatch modelBatch;
     private final Map<ModelInstance, Body> modelToBody = new HashMap<>();
-    private final SpriteBatch spriteBatch = new SpriteBatch();
     private final BitmapFont font = new BitmapFont();
     private final Environment environment;
     private boolean loading;
-    private final String skyBoxFileName = "models/skybox.obj";
+    private final String skyBoxFileName = Constants.MODELS_FOLDER + "/skybox.obj";
     private ModelInstance skyBox;
-    private final ShapeRenderer shapeRenderer;
 
     public MainScreen() {
         environment = new Environment();
@@ -97,7 +90,6 @@ public final class MainScreen implements Screen {
         // creating and adding the models
         for (final Body b : SolarSystem.planets) {
             final float scaledRadius = (float) (b.radius() * scale);
-            System.out.println(b.name() + " -> " + scaledRadius + " m -> " + ((int) (b.position().x * scale)) + " m");
 
             final Model model = new ModelBuilder()
                     .createSphere(
@@ -119,16 +111,12 @@ public final class MainScreen implements Screen {
             blockPart.setRenderable(renderable);
         }
 
-        modelBatch = new ModelBatch();
-
-        shapeRenderer = new ShapeRenderer();
-
-        assetManager = new AssetManager();
         assetManager.load(skyBoxFileName, Model.class);
         loading = true;
     }
 
     private void doneLoading() {
+        logger.debug("done loading");
         skyBox = new ModelInstance(assetManager.get(skyBoxFileName, Model.class));
 
         loading = false;
@@ -161,7 +149,7 @@ public final class MainScreen implements Screen {
 
         spriteBatch.begin();
         font.setColor(Color.GREEN);
-        font.draw(spriteBatch, String.format("FPS: %3.1f", 1 / delta), 0.0f, 20.0f);
+        font.draw(spriteBatch, String.format("FPS: %3.1f", 1 / delta), 0.0f, Gdx.graphics.getHeight());
         spriteBatch.end();
 
         final Map<Body, Vector2> bodyToLabelPosition = new HashMap<>();
@@ -222,10 +210,17 @@ public final class MainScreen implements Screen {
                         b -> new Vector3(b.position()).scl((float) scale).dst(camera.position)))
                 .findFirst()
                 .orElseThrow();
-        System.out.printf(
-                "Closest body: %s (%e)\n",
-                closestBody.name(),
-                new Vector3(closestBody.position()).scl((float) scale).dst(camera.position));
+        spriteBatch.begin();
+        font.setColor(Color.WHITE);
+        font.draw(
+                spriteBatch,
+                String.format(
+                        "Closest body: %s (%e)",
+                        closestBody.name(),
+                        new Vector3(closestBody.position()).scl((float) scale).dst(camera.position)),
+                0.0f,
+                20.0f);
+        spriteBatch.end();
 
         /*****************
          * HANDLE INPUTS *
@@ -300,30 +295,8 @@ public final class MainScreen implements Screen {
 
     @Override
     public void resize(final int width, final int height) {
-        // intentionally empty
-    }
-
-    @Override
-    public void pause() {
-        // intentionally empty
-    }
-
-    @Override
-    public void resume() {
-        // intentionally empty
-    }
-
-    @Override
-    public void hide() {
-        // intentionally empty
-    }
-
-    @Override
-    public void dispose() {
-        font.dispose();
-        models.forEach(m -> m.dispose());
-        modelBatch.dispose();
-        spriteBatch.dispose();
-        shapeRenderer.dispose();
+        camera.viewportHeight = (float) height;
+        camera.viewportWidth = (float) width;
+        camera.update();
     }
 }

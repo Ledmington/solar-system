@@ -164,7 +164,6 @@ tasks.register('prepareLinuxDistribution', JavaExec) {
 			'--resources', 'src/main/resources',
 			'--output', "${linuxDistributionOutput}"
 	]
-	println args
 }
 
 tasks.register('buildLinux', Zip) {
@@ -184,3 +183,5 @@ tasks.register('buildLinux', Zip) {
 		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxDistributionName}").length() / 1024 / 1024)
 	}
 }
+
+tasks.build.dependsOn(buildLinux)

@@ -41,7 +41,8 @@ public final class Launcher extends Game {
         config.setIdleFPS(30);
         config.setForegroundFPS(60);
         config.setResizable(true);
-        config.setWindowIcon(FileType.Internal, "images/icon.png");
+        config.setWindowSizeLimits(800, 480, -1, -1);
+        config.setWindowIcon(FileType.Internal, Constants.IMAGES_FOLDER + "/icon.png");
         new Lwjgl3Application(new Launcher(), config);
     }
 

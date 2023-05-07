@@ -15,7 +15,7 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-package com.ledmington.solarsystem.model;
+package com.ledmington.solarsystem;
 
 public final class Constants {
     private Constants() {}
@@ -26,4 +26,7 @@ public final class Constants {
      * One AU in meters.
      */
     public static final double oneAstronomicalUnit = 150_000_000_000.0;
+
+    public static final String IMAGES_FOLDER = "images";
+    public static final String MODELS_FOLDER = "models";
 }

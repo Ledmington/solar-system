@@ -22,6 +22,7 @@ import java.util.List;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
 import com.google.common.collect.ImmutableList;
+import com.ledmington.solarsystem.Constants;
 
 public final class SolarSystem {
     private SolarSystem() {}
