@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
 import com.google.common.collect.ImmutableMap;
+import com.ledmington.solarsystem.utils.language.Dictionary;
 
 public final class Body {
 
@@ -58,7 +59,7 @@ public final class Body {
     }
 
     public String name() {
-        return this.name.orElseThrow();
+        return Dictionary.getInstance().get(this.name.orElseThrow());
     }
 
     public double radius() {

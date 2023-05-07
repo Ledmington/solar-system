@@ -44,6 +44,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.viewport.FillViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import com.ledmington.solarsystem.model.Body;
 import com.ledmington.solarsystem.model.SolarSystem;
 import com.ledmington.solarsystem.utils.MiniLogger;
@@ -55,6 +57,7 @@ public final class MainScreen extends AbstractScreen {
     private static final MiniLogger logger = MiniLogger.getLogger("MainScreen");
 
     private final PerspectiveCamera camera;
+    private final Viewport viewport;
     private final float initialCameraSpeed = 0.1f;
     private float cameraSpeed = initialCameraSpeed;
     private final CameraInputController camController;
@@ -79,6 +82,8 @@ public final class MainScreen extends AbstractScreen {
         camera.near = 0.1f;
         camera.far = 1_000_000.0f;
         camera.update();
+
+        viewport = new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera);
 
         camController = new CameraInputController(camera);
         Gdx.input.setInputProcessor(camController);
@@ -135,8 +140,8 @@ public final class MainScreen extends AbstractScreen {
 
         camController.update();
 
-        Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
+        viewport.apply();
 
         // rendering skybox
         if (skyBox != null) {
@@ -149,7 +154,7 @@ public final class MainScreen extends AbstractScreen {
 
         spriteBatch.begin();
         font.setColor(Color.GREEN);
-        font.draw(spriteBatch, String.format("FPS: %3.1f", 1 / delta), 0.0f, Gdx.graphics.getHeight());
+        font.draw(spriteBatch, String.format("FPS: %3.1f", 1 / delta), 0.0f, viewport.getScreenHeight());
         spriteBatch.end();
 
         final Map<Body, Vector2> bodyToLabelPosition = new HashMap<>();
@@ -293,10 +298,7 @@ public final class MainScreen extends AbstractScreen {
         return cam.frustum.pointInFrustum(Vector3.Zero);
     }
 
-    @Override
     public void resize(final int width, final int height) {
-        camera.viewportHeight = (float) height;
-        camera.viewportWidth = (float) width;
-        camera.update();
+        viewport.update(width, height);
     }
 }

@@ -23,10 +23,13 @@ import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.ledmington.solarsystem.utils.MiniLogger;
 
 public final class Launcher extends Game {
-    public static void main(final String[] args) {
 
+    private static final MiniLogger logger = MiniLogger.getLogger("Launcher");
+
+    public static void main(final String[] args) {
         if (args.length > 0) {
             System.out.println("No command line arguments needed. Ingoring them.");
         }

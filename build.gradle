@@ -160,7 +160,7 @@ tasks.register('prepareLinuxDistribution', JavaExec) {
 			'--executable', 'solarsystem',
 			'--classpath', "${fatJarName}",
 			'--mainclass', "${mainClassName}",
-			'--vmargs', 'Xmx1G',
+			'--vmargs', 'Xmx1G', 'Dresources.dir=./resources',
 			'--resources', 'src/main/resources',
 			'--output', "${linuxDistributionOutput}"
 	]
