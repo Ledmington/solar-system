@@ -1,9 +1,10 @@
 plugins {
 	id 'java'
 	id 'application'
-	id 'com.diffplug.spotless' version '6.17.0'
+	id 'com.diffplug.spotless' version '6.18.0'
 	id 'com.github.ben-manes.versions' version '0.46.0'
 	id 'de.undercouch.download' version '5.4.0'
+	id 'com.adarshr.test-logger' version '3.2.0'
 }
 
 repositories {
@@ -29,6 +30,7 @@ java {
 }
 
 ext.gdxVersion = '1.11.0'
+ext.junitVersion = '5.9.3'
 dependencies {
 	// libGDX
 	implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
@@ -39,6 +41,11 @@ dependencies {
 
 	// utility stuff
 	implementation 'com.google.guava:guava:31.1-jre'
+
+	// testing stuff
+	testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+	testImplementation "org.junit.jupiter:junit-jupiter-params:$junitVersion"
+	testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 }
 
 application {
@@ -116,6 +123,36 @@ spotless {
 			"*/",
 		)
 	}
+}
+
+test {
+	useJUnitPlatform()
+	// failFast true
+}
+
+testlogger {
+	theme 'standard'
+
+	showExceptions true
+	showStackTraces true
+	showFullStackTraces false
+	showCauses true
+
+	slowThreshold 2000
+
+	showSummary true
+	showSimpleNames false
+	showPassed true
+	showSkipped true
+	showFailed true
+	showOnlySlow false
+
+	showStandardStreams false
+	showPassedStandardStreams true
+	showSkippedStandardStreams true
+	showFailedStandardStreams true
+
+	logLevel 'lifecycle'
 }
 
 tasks.compileJava.dependsOn(spotlessApply)
