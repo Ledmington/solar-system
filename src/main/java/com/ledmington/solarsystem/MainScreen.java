@@ -28,6 +28,7 @@ import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g3d.Environment;
@@ -36,6 +37,7 @@ import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.model.NodePart;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
@@ -65,6 +67,7 @@ public final class MainScreen extends AbstractScreen {
     private final Array<ModelInstance> instances = new Array<>();
     private final Renderable renderable;
     private final Map<ModelInstance, Body> modelToBody = new HashMap<>();
+    private final Map<Body, ModelInstance> bodyToModel = new HashMap<>();
     private final BitmapFont font = new BitmapFont();
     private final Environment environment;
     private boolean loading;
@@ -96,26 +99,45 @@ public final class MainScreen extends AbstractScreen {
         for (final Body b : SolarSystem.planets) {
             final float scaledRadius = (float) (b.radius() * scale);
 
-            final Model model = new ModelBuilder()
-                    .createSphere(
-                            scaledRadius,
-                            scaledRadius,
-                            scaledRadius,
-                            20,
-                            20,
-                            new Material(new ColorAttribute(ColorAttribute.Diffuse, b.color())),
-                            Usage.Position | Usage.Normal | Usage.TextureCoordinates);
+            Model model;
+            if (b.texture().isEmpty()) {
+                logger.debug(b.name() + " has no texture, using its color");
+                model = new ModelBuilder()
+                        .createSphere(
+                                scaledRadius,
+                                scaledRadius,
+                                scaledRadius,
+                                20,
+                                20,
+                                new Material(new ColorAttribute(ColorAttribute.Diffuse, b.color())),
+                                Usage.Position | Usage.Normal | Usage.TextureCoordinates);
+            } else {
+                logger.debug("adding texture of " + b.name() + " to be loaded");
+                assetManager.load(b.texture().get(), Texture.class);
+                final Material material = new Material();
+                model = new ModelBuilder()
+                        .createSphere(
+                                scaledRadius,
+                                scaledRadius,
+                                scaledRadius,
+                                20,
+                                20,
+                                material,
+                                Usage.Position | Usage.Normal | Usage.TextureCoordinates);
+            }
             models.add(model);
             final ModelInstance instance =
                     new ModelInstance(model, (int) (b.position().x * scale), (int) (b.position().y * scale), (int)
                             (b.position().z * scale));
             instances.add(instance);
             modelToBody.put(instance, b);
+            bodyToModel.put(b, instance);
 
             final NodePart blockPart = model.nodes.get(0).parts.get(0);
             blockPart.setRenderable(renderable);
         }
 
+        logger.debug("adding skybox to be loaded");
         assetManager.load(skyBoxFileName, Model.class);
         loading = true;
     }
@@ -123,6 +145,19 @@ public final class MainScreen extends AbstractScreen {
     private void doneLoading() {
         logger.debug("done loading");
         skyBox = new ModelInstance(assetManager.get(skyBoxFileName, Model.class));
+
+        for (Body b : SolarSystem.planets) {
+            if (b.texture().isEmpty()) {
+                continue;
+            }
+            bodyToModel
+                    .get(b)
+                    .materials
+                    .first()
+                    .set(new TextureAttribute(
+                            TextureAttribute.Diffuse,
+                            assetManager.get(b.texture().get(), Texture.class)));
+        }
 
         loading = false;
     }
@@ -226,6 +261,11 @@ public final class MainScreen extends AbstractScreen {
                 0.0f,
                 20.0f);
         spriteBatch.end();
+
+        // float viewportX = (2.0f * Gdx.input.getX()) / viewport.getScreenWidth() - 1.0f;
+        // float viewportY = (2.0f * (viewport.getScreenHeight() - Gdx.input.getY())) / viewport.getScreenHeight() -
+        // 1.0f;
+        // System.out.println(viewportX + " , " + viewportY);
 
         /*****************
          * HANDLE INPUTS *

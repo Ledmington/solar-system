@@ -38,6 +38,7 @@ public final class Body {
     private Vector3 position;
     private Vector3 speed;
     private final Color color;
+    private final Optional<String> texture;
 
     public Body(
             final String name,
@@ -45,7 +46,8 @@ public final class Body {
             final double massInKilograms,
             final Vector3 position,
             final Vector3 speed,
-            final Color color) {
+            final Color color,
+            final Optional<String> texture) {
         if (name == null || name.isEmpty() || name.isBlank()) {
             this.name = Optional.empty();
         } else {
@@ -56,6 +58,7 @@ public final class Body {
         this.position = position;
         this.speed = speed;
         this.color = color;
+        this.texture = texture;
     }
 
     public String name() {
@@ -70,8 +73,16 @@ public final class Body {
         return this.position;
     }
 
+    /**
+     * TODO: remove when a Texture for every planet is available
+     * @return
+     */
     public Color color() {
         return this.color;
+    }
+
+    public Optional<String> texture() {
+        return this.texture;
     }
 
     public String toString() {
