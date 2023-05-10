@@ -23,65 +23,106 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
 
 public final class BodyBuilder {
-    private String name;
+    private String name = null;
     private double radiusInMeters = -1.0;
     private double massInKilograms = -1.0;
     private Vector3 position = Vector3.Zero;
     private Vector3 speed = Vector3.Zero;
     private Color color = Color.WHITE;
     private Optional<String> texture = Optional.empty();
+    private boolean positionHasBeenSet = false;
+    private boolean speedHasBeenSet = false;
+    private boolean colorHasBeenSet = false;
+    private boolean textureHasBeenSet = false;
 
     public BodyBuilder() {}
 
     public BodyBuilder name(final String name) {
+        if (this.name != null) {
+            throw new IllegalStateException("Cannot set Body's name twice");
+        }
         this.name = name;
         return this;
     }
 
     public BodyBuilder radius(final double radiusInMeters) {
+        if (radiusInMeters < 0) {
+            throw new IllegalArgumentException("Cannot set a negative radius for a Body");
+        }
+        if (this.radiusInMeters >= 0) {
+            throw new IllegalStateException("Cannot set Body's radius twice");
+        }
         this.radiusInMeters = radiusInMeters;
         return this;
     }
 
     public BodyBuilder mass(final double massInKilograms) {
+        if (massInKilograms < 0) {
+            throw new IllegalArgumentException("Cannot set a negative mass for a Body");
+        }
+        if (this.massInKilograms >= 0) {
+            throw new IllegalStateException("Cannot set Body's mass twice");
+        }
         this.massInKilograms = massInKilograms;
         return this;
     }
 
     public BodyBuilder position(final Vector3 position) {
+        if (this.positionHasBeenSet) {
+            throw new IllegalStateException("Cannot set Body's position twice");
+        }
         this.position = position;
+        this.positionHasBeenSet = true;
         return this;
     }
 
     public BodyBuilder speed(final Vector3 speed) {
+        if (this.speedHasBeenSet) {
+            throw new IllegalStateException("Cannot set Body's speed twice");
+        }
         this.speed = speed;
+        this.speedHasBeenSet = true;
         return this;
     }
 
     public BodyBuilder color(final Color color) {
+        if (this.textureHasBeenSet) {
+            throw new IllegalStateException("Cannot set Body's color and the texture");
+        }
+        if (this.colorHasBeenSet) {
+            throw new IllegalStateException("Cannot set Body's color twice");
+        }
         this.color = color;
+        this.colorHasBeenSet = true;
         return this;
     }
 
     public BodyBuilder texture(final String texture) {
+        if (this.colorHasBeenSet) {
+            throw new IllegalStateException("Cannot set Body's texture and the color");
+        }
+        if (this.textureHasBeenSet) {
+            throw new IllegalStateException("Cannot set Body's texture twice");
+        }
         this.texture = Optional.of(texture);
+        this.textureHasBeenSet = true;
         return this;
     }
 
     public Body build() {
-        if (radiusInMeters < 0) {
-            throw new IllegalArgumentException("Cannot create a body without radius");
+        if (this.massInKilograms < 0) {
+            throw new IllegalStateException("Cannot build a Body without mass");
         }
-        if (massInKilograms < 0) {
-            throw new IllegalArgumentException("Cannot create a body without mass");
+        if (this.radiusInMeters < 0) {
+            throw new IllegalStateException("Cannot build a Body without radius");
         }
         return new Body(
-                this.name,
+                Optional.of(this.name),
                 this.radiusInMeters,
                 this.massInKilograms,
                 this.position,
                 this.speed,
-                this.color,
+                Optional.of(this.color),
                 this.texture);
     }
 }

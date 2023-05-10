@@ -18,6 +18,7 @@
 package com.ledmington.solarsystem.model;
 
 import java.util.List;
+import java.util.Set;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
@@ -63,8 +64,8 @@ public final class SolarSystem {
             .name("moon")
             .radius(1_737.5)
             .mass(7.346e22)
-            .position(Vector3.Zero)
-            .speed(Vector3.Zero)
+            .position(new Vector3(EARTH.position().x + 384_400_000.0f, 0, 0))
+            .speed(new Vector3(0, 29_782.7f, 0))
             .texture(Constants.MODELS_FOLDER + "/moon.jpg")
             .build();
     public static final Body MARS = Body.builder()
@@ -167,32 +168,37 @@ public final class SolarSystem {
             .name("pluto")
             .radius(1_188_300)
             .mass(1.303e22)
-            .position(Vector3.Zero)
+            .position(new Vector3((float) (39.5 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 4_743, 0))
             .build();
 
-    public static final List<Body> planets = ImmutableList.<Body>builder()
-            .add(SUN)
-            .add(MERCURY)
-            .add(VENUS)
-            .add(EARTH)
-            .add(MOON)
-            .add(MARS)
-            .add(PHOBOS)
-            .add(DEIMOS)
-            .add(JUPITER)
-            .add(IO)
-            .add(EUROPA)
-            .add(GANYMEDE)
-            .add(CALLISTO)
-            .add(SATURN)
-            .add(ENCELADUS)
-            .add(TITAN)
-            .add(URANUS)
-            // TODO add Uranus moons
-            .add(NEPTUNE)
-            // TODO add Neptune moons
-            .add(PLUTO)
-            // TODO add Pluto moons
-            .build();
+    public static final List<Body> planets() {
+        return ImmutableList.<Body>builder()
+                .addAll(
+                        // making sure that we are not making duplicates
+                        Set.of(
+                                SUN,
+                                MERCURY,
+                                VENUS,
+                                EARTH,
+                                MOON,
+                                MARS,
+                                PHOBOS,
+                                DEIMOS,
+                                JUPITER,
+                                IO,
+                                EUROPA,
+                                GANYMEDE,
+                                CALLISTO,
+                                SATURN,
+                                ENCELADUS,
+                                TITAN,
+                                // TODO add Uranus moons
+                                URANUS,
+                                // TODO add Neptune moons
+                                NEPTUNE,
+                                // TODO add Pluto moons
+                                PLUTO))
+                .build();
+    }
 }

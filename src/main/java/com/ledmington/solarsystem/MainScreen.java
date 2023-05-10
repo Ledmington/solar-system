@@ -24,6 +24,7 @@ import java.util.Map.Entry;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL30;
@@ -40,34 +41,29 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.model.NodePart;
-import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.ledmington.solarsystem.model.Body;
 import com.ledmington.solarsystem.model.SolarSystem;
 import com.ledmington.solarsystem.utils.MiniLogger;
 
-public final class MainScreen extends AbstractScreen {
+public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     // 10'000km : 1
     private static final double scale = 1.0 / 10_000_000.0;
     private static final MiniLogger logger = MiniLogger.getLogger("MainScreen");
 
     private final PerspectiveCamera camera;
-    private final Viewport viewport;
     private final float initialCameraSpeed = 0.1f;
     private float cameraSpeed = initialCameraSpeed;
-    private final CameraInputController camController;
-    private final Array<Model> models = new Array<>();
-    private final Array<ModelInstance> instances = new Array<>();
+    private final Viewport viewport;
     private final Renderable renderable;
-    private final Map<ModelInstance, Body> modelToBody = new HashMap<>();
-    private final Map<Body, ModelInstance> bodyToModel = new HashMap<>();
+    private final Map<Body, ModelInstance> bodiesToModels = new HashMap<>();
+    private final Map<Body, ModelInstance> debuggingCopy = new HashMap<>();
     private final BitmapFont font = new BitmapFont();
     private final Environment environment;
     private boolean loading;
@@ -88,50 +84,44 @@ public final class MainScreen extends AbstractScreen {
 
         viewport = new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera);
 
-        camController = new CameraInputController(camera);
-        Gdx.input.setInputProcessor(camController);
+        Gdx.input.setInputProcessor((InputProcessor) this);
 
         renderable = new Renderable();
         renderable.environment = null;
         renderable.worldTransform.idt();
 
         // creating and adding the models
-        for (final Body b : SolarSystem.planets) {
+        for (final Body b : SolarSystem.planets()) {
             final float scaledRadius = (float) (b.radius() * scale);
 
             Model model;
-            if (b.texture().isEmpty()) {
-                logger.debug(b.name() + " has no texture, using its color");
-                model = new ModelBuilder()
-                        .createSphere(
-                                scaledRadius,
-                                scaledRadius,
-                                scaledRadius,
-                                20,
-                                20,
-                                new Material(new ColorAttribute(ColorAttribute.Diffuse, b.color())),
-                                Usage.Position | Usage.Normal | Usage.TextureCoordinates);
-            } else {
-                logger.debug("adding texture of " + b.name() + " to be loaded");
+            Material material;
+            if (b.hasTexture()) {
+                logger.debug(
+                        "adding texture of %s (%s) to be loaded",
+                        b.name().get(), b.texture().get());
                 assetManager.load(b.texture().get(), Texture.class);
-                final Material material = new Material();
-                model = new ModelBuilder()
-                        .createSphere(
-                                scaledRadius,
-                                scaledRadius,
-                                scaledRadius,
-                                20,
-                                20,
-                                material,
-                                Usage.Position | Usage.Normal | Usage.TextureCoordinates);
+                material = new Material();
+            } else {
+                logger.debug(b.name().get() + " has no texture, using its color");
+                material = new Material(
+                        new ColorAttribute(ColorAttribute.Diffuse, b.color().get()));
             }
-            models.add(model);
+            model = new ModelBuilder()
+                    .createSphere(
+                            scaledRadius,
+                            scaledRadius,
+                            scaledRadius,
+                            20,
+                            20,
+                            material,
+                            Usage.Position | Usage.Normal | Usage.TextureCoordinates);
+
             final ModelInstance instance =
                     new ModelInstance(model, (int) (b.position().x * scale), (int) (b.position().y * scale), (int)
                             (b.position().z * scale));
-            instances.add(instance);
-            modelToBody.put(instance, b);
-            bodyToModel.put(b, instance);
+            bodiesToModels.put(b, instance);
+            debuggingCopy.put(b, instance);
 
             final NodePart blockPart = model.nodes.get(0).parts.get(0);
             blockPart.setRenderable(renderable);
@@ -146,19 +136,15 @@ public final class MainScreen extends AbstractScreen {
         logger.debug("done loading");
         skyBox = new ModelInstance(assetManager.get(skyBoxFileName, Model.class));
 
-        for (Body b : SolarSystem.planets) {
-            if (b.texture().isEmpty()) {
-                continue;
-            }
-            bodyToModel
+        SolarSystem.planets().stream().filter(b -> b.hasTexture()).forEach(b -> {
+            bodiesToModels
                     .get(b)
                     .materials
                     .first()
                     .set(new TextureAttribute(
                             TextureAttribute.Diffuse,
                             assetManager.get(b.texture().get(), Texture.class)));
-        }
-
+        });
         loading = false;
     }
 
@@ -172,8 +158,6 @@ public final class MainScreen extends AbstractScreen {
         if (loading && assetManager.update()) {
             doneLoading();
         }
-
-        camController.update();
 
         Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
         viewport.apply();
@@ -203,10 +187,11 @@ public final class MainScreen extends AbstractScreen {
 
         modelBatch.begin(camera);
         // rendering planets
-        for (final ModelInstance instance : instances) {
+        for (final Map.Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
+            final Body b = entry.getKey();
+            final ModelInstance instance = entry.getValue();
             if (isVisible(camera, instance)) {
                 modelBatch.render(instance, environment);
-                final Body b = modelToBody.get(instance);
                 final Vector3 labelPosition = camera.project(new Vector3(
                         (float) ((b.position().x + b.radius()) * scale),
                         (float) ((b.position().y + b.radius()) * scale),
@@ -222,7 +207,7 @@ public final class MainScreen extends AbstractScreen {
             final Vector2 labelPosition = entry.getValue();
             // draw red label
             font.setColor(1.0f, 0.0f, 0.0f, 1.0f);
-            font.draw(spriteBatch, b.name(), labelPosition.x + 10, labelPosition.y + 10);
+            font.draw(spriteBatch, b.name().get(), labelPosition.x + 10, labelPosition.y + 10);
         }
         spriteBatch.end();
 
@@ -245,7 +230,7 @@ public final class MainScreen extends AbstractScreen {
         }
         shapeRenderer.end();
 
-        final Body closestBody = SolarSystem.planets.stream()
+        final Body closestBody = SolarSystem.planets().stream()
                 .sorted(Comparator.comparing(
                         b -> new Vector3(b.position()).scl((float) scale).dst(camera.position)))
                 .findFirst()
@@ -270,35 +255,6 @@ public final class MainScreen extends AbstractScreen {
         /*****************
          * HANDLE INPUTS *
          *****************/
-        if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP)) {
-            camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-        if (Gdx.input.isKeyPressed(Keys.S) || Gdx.input.isKeyPressed(Keys.DOWN)) {
-            camera.position.sub(new Vector3(camera.direction).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-        if (Gdx.input.isKeyPressed(Keys.A) || Gdx.input.isKeyPressed(Keys.LEFT)) {
-            camera.position.add(
-                    new Vector3(camera.direction).rotate(camera.up, -90.0f).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-        if (Gdx.input.isKeyPressed(Keys.D) || Gdx.input.isKeyPressed(Keys.RIGHT)) {
-            camera.position.add(
-                    new Vector3(camera.direction).rotate(camera.up, 90.0f).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-
-        if (!Gdx.input.isKeyPressed(Keys.W)
-                && !Gdx.input.isKeyPressed(Keys.A)
-                && !Gdx.input.isKeyPressed(Keys.S)
-                && !Gdx.input.isKeyPressed(Keys.D)
-                && !Gdx.input.isKeyPressed(Keys.UP)
-                && !Gdx.input.isKeyPressed(Keys.DOWN)
-                && !Gdx.input.isKeyPressed(Keys.RIGHT)
-                && !Gdx.input.isKeyPressed(Keys.LEFT)) {
-            cameraSpeed = initialCameraSpeed;
-        }
 
         // if the mouse is over a planet we highlight it
         for (Entry<Body, Vector3> entry : bodyToHitbox.entrySet()) {
@@ -340,5 +296,93 @@ public final class MainScreen extends AbstractScreen {
 
     public void resize(final int width, final int height) {
         viewport.update(width, height);
+    }
+
+    @Override
+    public boolean keyDown(int keycode) {
+        switch (keycode) {
+            case Keys.W:
+            case Keys.UP:
+                camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
+                cameraSpeed += initialCameraSpeed;
+                camera.update();
+                break;
+        }
+        /*
+         * if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP)) {
+            camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        if (Gdx.input.isKeyPressed(Keys.S) || Gdx.input.isKeyPressed(Keys.DOWN)) {
+            camera.position.sub(new Vector3(camera.direction).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        if (Gdx.input.isKeyPressed(Keys.A) || Gdx.input.isKeyPressed(Keys.LEFT)) {
+            camera.position.add(
+                    new Vector3(camera.direction).rotate(camera.up, -90.0f).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        if (Gdx.input.isKeyPressed(Keys.D) || Gdx.input.isKeyPressed(Keys.RIGHT)) {
+            camera.position.add(
+                    new Vector3(camera.direction).rotate(camera.up, 90.0f).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+         */
+        return true;
+    }
+
+    @Override
+    public boolean keyUp(int keycode) {
+        cameraSpeed = initialCameraSpeed;
+        return false;
+    }
+
+    @Override
+    public boolean keyTyped(char character) {
+        if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP)) {
+            camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        if (Gdx.input.isKeyPressed(Keys.S) || Gdx.input.isKeyPressed(Keys.DOWN)) {
+            camera.position.sub(new Vector3(camera.direction).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        if (Gdx.input.isKeyPressed(Keys.A) || Gdx.input.isKeyPressed(Keys.LEFT)) {
+            camera.position.add(
+                    new Vector3(camera.direction).rotate(camera.up, -90.0f).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        if (Gdx.input.isKeyPressed(Keys.D) || Gdx.input.isKeyPressed(Keys.RIGHT)) {
+            camera.position.add(
+                    new Vector3(camera.direction).rotate(camera.up, 90.0f).scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        System.out.println(cameraSpeed);
+        return false;
+    }
+
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchDragged(int screenX, int screenY, int pointer) {
+        return false;
+    }
+
+    @Override
+    public boolean mouseMoved(int screenX, int screenY) {
+        return false;
+    }
+
+    @Override
+    public boolean scrolled(float amountX, float amountY) {
+        return false;
     }
 }

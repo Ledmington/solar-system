@@ -17,111 +17,34 @@
 */
 package com.ledmington.solarsystem.model;
 
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
-import com.google.common.collect.ImmutableMap;
 import com.ledmington.solarsystem.utils.language.Dictionary;
 
-public final class Body {
+public final record Body(
+        Optional<String> name,
+        double radius,
+        double mass,
+        Vector3 position,
+        Vector3 speed,
+        Optional<Color> color,
+        Optional<String> texture) {
 
     public static BodyBuilder builder() {
         return new BodyBuilder();
     }
 
-    private final Optional<String> name;
-    private final double radiusInMeters;
-    private final double massInKilograms;
-    private Vector3 position;
-    private Vector3 speed;
-    private final Color color;
-    private final Optional<String> texture;
-
-    public Body(
-            final String name,
-            final double radiusInMeters,
-            final double massInKilograms,
-            final Vector3 position,
-            final Vector3 speed,
-            final Color color,
-            final Optional<String> texture) {
-        if (name == null || name.isEmpty() || name.isBlank()) {
-            this.name = Optional.empty();
-        } else {
-            this.name = Optional.of(name);
-        }
-        this.radiusInMeters = radiusInMeters;
-        this.massInKilograms = massInKilograms;
-        this.position = position;
-        this.speed = speed;
-        this.color = color;
-        this.texture = texture;
+    public Optional<String> name() {
+        return this.name.isPresent() ? Optional.of(Dictionary.getInstance().get(this.name.get())) : Optional.empty();
     }
 
-    public String name() {
-        return Dictionary.getInstance().get(this.name.orElseThrow());
+    public boolean hasColor() {
+        return this.color.isPresent();
     }
 
-    public double radius() {
-        return this.radiusInMeters;
-    }
-
-    public Vector3 position() {
-        return this.position;
-    }
-
-    /**
-     * TODO: remove when a Texture for every planet is available
-     * @return
-     */
-    public Color color() {
-        return this.color;
-    }
-
-    public Optional<String> texture() {
-        return this.texture;
-    }
-
-    public String toString() {
-        return "Body("
-                + ImmutableMap.<String, String>builder()
-                        .put("name", name.isPresent() ? name.get() : "N/A")
-                        .put("radius", String.valueOf(radiusInMeters))
-                        .put("mass", String.valueOf(massInKilograms))
-                        .put("position", position.toString())
-                        .put("speed", speed.toString())
-                        .put("color", color.toString())
-                        .build()
-                        .entrySet()
-                        .stream()
-                        .map(entry -> entry.getKey() + "=" + entry.getValue())
-                        .collect(Collectors.joining(","))
-                + ")";
-    }
-
-    public boolean equals(final Object other) {
-        if (other == null) {
-            return false;
-        }
-        if (this == other) {
-            return true;
-        }
-        if (!this.getClass().equals(other.getClass())) {
-            return false;
-        }
-        final Body b = (Body) other;
-        return name.equals(b.name)
-                && radiusInMeters == b.radiusInMeters
-                && massInKilograms == b.massInKilograms
-                && position.equals(b.position)
-                && speed.equals(b.speed)
-                && color.equals(b.color);
-    }
-
-    public int hashCode() {
-        return Objects.hash(name, radiusInMeters, massInKilograms, position, speed, color);
+    public boolean hasTexture() {
+        return this.texture.isPresent();
     }
 }
