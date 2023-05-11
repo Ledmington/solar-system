@@ -27,6 +27,8 @@ String windowsDistributionOutput = "${distributionsDir}/windows"
 String windowsDistributionName = "${appName}-windows.zip"
 String javaReleaseVersion = "20"
 
+ext.asyncProfilerVersion = '2.9'
+
 java {
 	sourceCompatibility = '17'
 	targetCompatibility = '17'
@@ -54,7 +56,6 @@ dependencies {
 application {
 	mainClass = "${mainClassName}"
 }
-
 
 tasks.withType(JavaCompile).configureEach {
 	options.compilerArgs << '-Xdiags:verbose'
@@ -368,3 +369,42 @@ tasks.register('buildWindows', Zip) {
 }
 
 tasks.build.dependsOn(buildWindows)
+
+// utility function
+static def getDate() {
+	return new Date().format('yyyyMMddHHmmss')
+}
+
+tasks.register('downloadAsyncProfiler', Download) {
+	src "https://github.com/async-profiler/async-profiler/releases/download/v${asyncProfilerVersion}/async-profiler-${asyncProfilerVersion}-linux-x64.tar.gz"
+	dest new File(toolsDir, "async-profiler.tar.gz")
+	overwrite false
+}
+
+tasks.register('asyncProfiler', Copy) {
+	dependsOn downloadAsyncProfiler
+	from tarTree(downloadAsyncProfiler.dest)
+	into "${buildDir}/async-profiler/"
+	includeEmptyDirs(false)
+	ext {
+		profiler = "${buildDir}/async-profiler/async-profiler-${asyncProfilerVersion}-linux-x64/build/libasyncProfiler.so"
+	}
+}
+
+tasks.register('flamegraph', JavaExec) {
+	dependsOn([asyncProfiler, fatJar])
+	group 'Utilities'
+	description 'Runs the app with async-profiler attached and generates a flamegraph'
+	def flamegraphFile = "${buildDir}/flamegraphs/flamegraph-cpu-${getDate()}.html"
+	doFirst {
+		mkdir "${buildDir}/flamegraphs"
+	}
+	classpath fatJarName
+	args = []
+	jvmArgs = [
+		"-agentpath:${asyncProfiler.profiler}=start,event=cpu,file=${flamegraphFile}"
+	]
+	doLast {
+		println "Generated flamegraph ${flamegraphFile}"
+	}
+}
