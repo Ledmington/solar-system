@@ -23,6 +23,7 @@ String toolsDir = "${buildDir}/tools"
 String distributionsDir = "${buildDir}/distributions"
 String linuxDistributionOutput = "${distributionsDir}/linux"
 String linuxDistributionName = "${appName}-linux.tar.gz"
+String javaReleaseVersion = "20"
 
 java {
 	sourceCompatibility = '17'
@@ -186,20 +187,53 @@ tasks.register('downloadPackr', Download) {
 	overwrite false
 }
 
+tasks.register('detectModules', Exec) {
+	dependsOn fatJar
+	workingDir '.'
+	commandLine([
+		"jdeps",
+		"--multi-release", "${javaReleaseVersion}",
+		"--ignore-missing-deps",
+		"--print-module-deps",
+		"${fatJarName}"
+	])
+	standardOutput = new ByteArrayOutputStream()
+	doLast {
+		println "Detected modules: " + standardOutput.toString().strip()
+		ext.detectedModules = standardOutput.toString().strip()
+	}
+}
+
+tasks.register('tailorJRE', Exec) {
+	dependsOn detectModules
+	doFirst {
+		workingDir '.'
+		commandLine([
+			'jlink',
+			'--no-header-files',
+			'--no-man-pages',
+			'--strip-debug',
+			'--compress=2',
+			'--add-modules', detectModules.detectedModules,
+			'--output', "${buildDir}/customJRE"
+		])
+	}
+}
+
 tasks.register('prepareLinuxDistribution', JavaExec) {
-	dependsOn([fatJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr, tailorJRE])
 	group 'distribution'
 	classpath './build/tools/packr.jar'
 	args = [
-			'--platform', 'linux64',
-			'--jdk', 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_linux_hotspot_17.0.7_7.tar.gz',
-			'--useZgcIfSupportedOs',
-			'--executable', 'solarsystem',
-			'--classpath', "${fatJarName}",
-			'--mainclass', "${mainClassName}",
-			'--vmargs', 'Xmx1G', 'Dresources.dir=./resources',
-			'--resources', 'src/main/resources',
-			'--output', "${linuxDistributionOutput}"
+		'--platform', 'linux64',
+		'--jdk', "${buildDir}/customJRE",
+		'--useZgcIfSupportedOs',
+		'--executable', 'solarsystem',
+		'--classpath', "${fatJarName}",
+		'--mainclass', "${mainClassName}",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources',
+		'--resources', 'src/main/resources',
+		'--output', "${linuxDistributionOutput}"
 	]
 }
 
