@@ -21,11 +21,21 @@ String fatJarPath = "${buildDir}/libs"
 String fatJarName = "${fatJarPath}/${appName}.jar"
 String toolsDir = "${buildDir}/tools"
 String distributionsDir = "${buildDir}/distributions"
-String linuxDistributionOutput = "${distributionsDir}/linux"
-String linuxDistributionName = "${appName}-linux.tar.gz"
-String windowsDistributionOutput = "${distributionsDir}/windows"
-String windowsDistributionName = "${appName}-windows.zip"
-String javaReleaseVersion = "20"
+String linuxArm64DistributionOutput = "${distributionsDir}/linux-aarch64"
+String linuxArm64DistributionName = "${appName}-linux-aarch64.tar.gz"
+String linuxArm32DistributionOutput = "${distributionsDir}/linux-arm"
+String linuxArm32DistributionName = "${appName}-linux-arm.tar.gz"
+String linuxX64DistributionOutput = "${distributionsDir}/linux-x64"
+String linuxX64DistributionName = "${appName}-linux-x64.tar.gz"
+String windows64DistributionOutput = "${distributionsDir}/windows-x64"
+String windows64DistributionName = "${appName}-windows-x64.zip"
+String windows32DistributionOutput = "${distributionsDir}/windows-x86_32"
+String windows32DistributionName = "${appName}-windows-x86_32.zip"
+String macosX64DistributionOutput = "${distributionsDir}/macos-x64"
+String macosX64DistributionName = "${appName}-macos-x64.tar.gz"
+String macosArm64DistributionOutput = "${distributionsDir}/macos-aarch64"
+String macosArm64DistributionName = "${appName}-macos-aarch64.tar.gz"
+String javaReleaseVersion = "17"
 
 ext.asyncProfilerVersion = '2.9'
 
@@ -240,7 +250,7 @@ tasks.register('detectModules', Exec) {
 	}
 }
 
-tasks.register('prepareLinuxDistribution', JavaExec) {
+tasks.register('prepareLinuxX64Distribution', JavaExec) {
 	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath './build/tools/packr.jar'
@@ -254,31 +264,101 @@ tasks.register('prepareLinuxDistribution', JavaExec) {
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', 'src/main/resources',
 		'--icon', "src/main/resources/images/icon.png",
-		'--output', "${linuxDistributionOutput}"
+		'--output', "${linuxX64DistributionOutput}"
 	]
 }
 
-tasks.register('buildLinux', Zip) {
-	dependsOn prepareLinuxDistribution
+tasks.register('buildLinuxX64', Zip) {
+	dependsOn prepareLinuxX64Distribution
 	group 'distribution'
-	description 'Zips the app distribution for Linux'
-	archiveFileName = "${linuxDistributionName}"
+	description 'Zips the app distribution for Linux x64'
+	archiveFileName = "${linuxX64DistributionName}"
 	destinationDirectory = new File("${distributionsDir}")
-	from("${linuxDistributionOutput}") {
+	from("${linuxX64DistributionOutput}") {
 		//include('**.sh')
 		//include('**/java')
 		include ("**/*")
 		fileMode 0755
 	}
 	doLast {
-		println "Linux distribution is ${distributionsDir}/${linuxDistributionName}"
-		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxDistributionName}").length() / 1024 / 1024)
+		println "Linux distribution is ${distributionsDir}/${linuxX64DistributionName}"
+		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxX64DistributionName}").length() / 1024 / 1024)
 	}
 }
 
-tasks.build.dependsOn(buildLinux)
+tasks.register('prepareLinuxArm64Distribution', JavaExec) {
+	dependsOn([fatJar, downloadPackr])
+	group 'distribution'
+	classpath './build/tools/packr.jar'
+	args = [
+		'--platform', 'linux64',
+		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_aarch64_linux_hotspot_17.0.7_7.tar.gz",
+		'--useZgcIfSupportedOs',
+		'--executable', 'solarsystem',
+		'--classpath', "${fatJarName}",
+		'--mainclass', "${mainClassName}",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
+		'--resources', 'src/main/resources',
+		'--icon', "src/main/resources/images/icon.png",
+		'--output', "${linuxArm64DistributionOutput}"
+	]
+}
 
-tasks.register('prepareWindowsDistribution', JavaExec) {
+tasks.register('buildLinuxArm64', Zip) {
+	dependsOn prepareLinuxArm64Distribution
+	group 'distribution'
+	description 'Zips the app distribution for Linux aarch64'
+	archiveFileName = "${linuxArm64DistributionName}"
+	destinationDirectory = new File("${distributionsDir}")
+	from("${linuxArm64DistributionOutput}") {
+		//include('**.sh')
+		//include('**/java')
+		include ("**/*")
+		fileMode 0755
+	}
+	doLast {
+		println "Linux distribution is ${distributionsDir}/${linuxArm64DistributionName}"
+		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxArm64DistributionName}").length() / 1024 / 1024)
+	}
+}
+
+tasks.register('prepareLinuxArm32Distribution', JavaExec) {
+	dependsOn([fatJar, downloadPackr])
+	group 'distribution'
+	classpath './build/tools/packr.jar'
+	args = [
+		'--platform', 'linux64',
+		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_arm_linux_hotspot_17.0.7_7.tar.gz",
+		'--useZgcIfSupportedOs',
+		'--executable', 'solarsystem',
+		'--classpath', "${fatJarName}",
+		'--mainclass', "${mainClassName}",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
+		'--resources', 'src/main/resources',
+		'--icon', "src/main/resources/images/icon.png",
+		'--output', "${linuxArm32DistributionOutput}"
+	]
+}
+
+tasks.register('buildLinuxArm32', Zip) {
+	dependsOn prepareLinuxArm32Distribution
+	group 'distribution'
+	description 'Zips the app distribution for Linux arm32'
+	archiveFileName = "${linuxArm32DistributionName}"
+	destinationDirectory = new File("${distributionsDir}")
+	from("${linuxArm32DistributionOutput}") {
+		//include('**.sh')
+		//include('**/java')
+		include ("**/*")
+		fileMode 0755
+	}
+	doLast {
+		println "Linux distribution is ${distributionsDir}/${linuxArm32DistributionName}"
+		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxArm32DistributionName}").length() / 1024 / 1024)
+	}
+}
+
+tasks.register('prepareWindows64Distribution', JavaExec) {
 	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath './build/tools/packr.jar'
@@ -291,29 +371,140 @@ tasks.register('prepareWindowsDistribution', JavaExec) {
 		'--mainclass', "${mainClassName}",
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', 'src/main/resources',
-		'--output', "${windowsDistributionOutput}"
+		'--output', "${windows64DistributionOutput}"
 	]
 }
 
-tasks.register('buildWindows', Zip) {
-	dependsOn prepareWindowsDistribution
+tasks.register('buildWindows64', Zip) {
+	dependsOn prepareWindows64Distribution
 	group 'distribution'
-	description 'Zips the app distribution for Windows'
-	archiveFileName = "${windowsDistributionName}"
+	description 'Zips the app distribution for Windows x64'
+	archiveFileName = "${windows64DistributionName}"
 	destinationDirectory = new File("${distributionsDir}")
-	from("${windowsDistributionOutput}") {
+	from("${windows64DistributionOutput}") {
 		//include('**.sh')
 		//include('**/java')
 		include ("**/*")
 		fileMode 0755
 	}
 	doLast {
-		println "Windows distribution is ${distributionsDir}/${windowsDistributionName}"
-		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${windowsDistributionName}").length() / 1024 / 1024)
+		println "Windows distribution is ${distributionsDir}/${windows64DistributionName}"
+		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${windows64DistributionName}").length() / 1024 / 1024)
 	}
 }
 
-tasks.build.dependsOn(buildWindows)
+tasks.register('prepareWindows32Distribution', JavaExec) {
+	dependsOn([fatJar, downloadPackr])
+	group 'distribution'
+	classpath './build/tools/packr.jar'
+	args = [
+		'--platform', 'windows64',
+		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x86-32_windows_hotspot_17.0.7_7.zip",
+		'--useZgcIfSupportedOs',
+		'--executable', 'solarsystem',
+		'--classpath', "${fatJarName}",
+		'--mainclass', "${mainClassName}",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
+		'--resources', 'src/main/resources',
+		'--output', "${windows32DistributionOutput}"
+	]
+}
+
+tasks.register('buildWindows32', Zip) {
+	dependsOn prepareWindows32Distribution
+	group 'distribution'
+	description 'Zips the app distribution for Windows x86-32'
+	archiveFileName = "${windows32DistributionName}"
+	destinationDirectory = new File("${distributionsDir}")
+	from("${windows32DistributionOutput}") {
+		//include('**.sh')
+		//include('**/java')
+		include ("**/*")
+		fileMode 0755
+	}
+	doLast {
+		println "Windows distribution is ${distributionsDir}/${windows32DistributionName}"
+		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${windows32DistributionName}").length() / 1024 / 1024)
+	}
+}
+
+tasks.register('prepareMacosX64Distribution', JavaExec) {
+	dependsOn([fatJar, downloadPackr])
+	group 'distribution'
+	classpath './build/tools/packr.jar'
+	args = [
+		'--platform', 'mac',
+		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_mac_hotspot_17.0.7_7.tar.gz",
+		'--useZgcIfSupportedOs',
+		'--executable', 'solarsystem',
+		'--classpath', "${fatJarName}",
+		'--mainclass', "${mainClassName}",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
+		'--resources', 'src/main/resources',
+		'--output', "${macosX64DistributionOutput}"
+	]
+}
+
+tasks.register('buildMacosX64', Zip) {
+	dependsOn prepareMacosX64Distribution
+	group 'distribution'
+	description 'Zips the app distribution for Macos x64'
+	archiveFileName = "${macosX64DistributionName}"
+	destinationDirectory = new File("${distributionsDir}")
+	from("${macosX64DistributionOutput}") {
+		//include('**.sh')
+		//include('**/java')
+		include ("**/*")
+		fileMode 0755
+	}
+	doLast {
+		println "Windows distribution is ${distributionsDir}/${macosX64DistributionName}"
+		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${macosX64DistributionName}").length() / 1024 / 1024)
+	}
+}
+
+tasks.register('prepareMacosArm64Distribution', JavaExec) {
+	dependsOn([fatJar, downloadPackr])
+	group 'distribution'
+	classpath './build/tools/packr.jar'
+	args = [
+		'--platform', 'mac',
+		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.7_7.tar.gz",
+		'--useZgcIfSupportedOs',
+		'--executable', 'solarsystem',
+		'--classpath', "${fatJarName}",
+		'--mainclass', "${mainClassName}",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
+		'--resources', 'src/main/resources',
+		'--output', "${macosArm64DistributionOutput}"
+	]
+}
+
+tasks.register('buildMacosArm64', Zip) {
+	dependsOn prepareMacosArm64Distribution
+	group 'distribution'
+	description 'Zips the app distribution for Macos aarch64'
+	archiveFileName = "${macosArm64DistributionName}"
+	destinationDirectory = new File("${distributionsDir}")
+	from("${macosArm64DistributionOutput}") {
+		//include('**.sh')
+		//include('**/java')
+		include ("**/*")
+		fileMode 0755
+	}
+	doLast {
+		println "Windows distribution is ${distributionsDir}/${macosArm64DistributionName}"
+		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${macosArm64DistributionName}").length() / 1024 / 1024)
+	}
+}
+
+tasks.build.dependsOn(buildLinuxX64)
+tasks.build.dependsOn(buildLinuxArm64)
+tasks.build.dependsOn(buildLinuxArm32)
+tasks.build.dependsOn(buildWindows64)
+tasks.build.dependsOn(buildWindows32)
+tasks.build.dependsOn(buildMacosX64)
+tasks.build.dependsOn(buildMacosArm64)
 
 // utility function
 static def getDate() {
