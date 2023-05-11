@@ -184,6 +184,13 @@ tasks.register('fatJar', Jar) {
 	}
 }
 
+tasks.register('runProd', JavaExec) {
+	dependsOn fatJar
+	group 'Application'
+	description 'Runs the fatJar'
+	classpath fatJarName
+}
+
 tasks.register('downloadJDGUI', Download) {
 	src "https://github.com/java-decompiler/jd-gui/releases/download/v1.6.6/jd-gui-1.6.6.jar"
 	dest new File(toolsDir, '/jd.jar')
