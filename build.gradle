@@ -163,6 +163,7 @@ tasks.compileJava.dependsOn(spotlessApply)
 tasks.register('fatJar', Jar) {
 	group 'distribution'
 	description 'Builds the fat jar of the application'
+	outputs.file file(fatJarName)
 	from sourceSets.main.output
 	dependsOn configurations.runtimeClasspath
 	from {
@@ -172,8 +173,8 @@ tasks.register('fatJar', Jar) {
 	manifest {
 		archiveBaseName = appName
 		attributes(
-				"Implementation-Version": "${version}",
-				"Main-Class": "${mainClassName}"
+			"Implementation-Version": "${version}",
+			"Main-Class": "${mainClassName}"
 		)
 	}
 
