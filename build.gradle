@@ -57,6 +57,12 @@ application {
 	mainClass = "${mainClassName}"
 }
 
+run {
+	jvmArgs = [
+		"-XX:+TieredCompilation"
+	]
+}
+
 tasks.withType(JavaCompile).configureEach {
 	options.compilerArgs << '-Xdiags:verbose'
 	options.compilerArgs << '-Xlint:all,-serial,-processing'
@@ -190,6 +196,9 @@ tasks.register('runProd', JavaExec) {
 	group 'Application'
 	description 'Runs the fatJar'
 	classpath fatJarName
+	jvmArgs = [
+		"-XX:+TieredCompilation"
+	]
 }
 
 tasks.register('downloadJDGUI', Download) {
@@ -231,50 +240,18 @@ tasks.register('detectModules', Exec) {
 	}
 }
 
-tasks.register('downloadLinuxJRE', Download) {
-	src "https://download.java.net/java/GA/jdk20.0.1/b4887098932d415489976708ad6d1a4b/9/GPL/openjdk-20.0.1_linux-x64_bin.tar.gz"
-	dest new File(distributionsDir, 'linux-jre-full.tar.gz')
-	overwrite false
-}
-
-tasks.register('getLinuxJRE', Copy) {
-	dependsOn downloadLinuxJRE
-	from tarTree(downloadLinuxJRE.dest)
-	into "${distributionsDir}/linux-jre-full"
-	includeEmptyDirs(false)
-	filesMatching("**") {
-		it.path = it.path.replaceAll("^[a-zA-Z0-9.+-]*[/\\\\]", "jre/")
-	}
-}
-
-tasks.register('tailorJRELinux', Exec) {
-	dependsOn([detectModules, getLinuxJRE])
-	doFirst {
-		workingDir '.'
-		commandLine([
-			"${distributionsDir}/linux-jre-full/jre/bin/jlink",
-			'--no-header-files',
-			'--no-man-pages',
-			'--strip-debug',
-			'--compress=2',
-			'--add-modules', detectModules.detectedModules,
-			'--output', "${distributionsDir}/tailoredJRELinux"
-		])
-	}
-}
-
 tasks.register('prepareLinuxDistribution', JavaExec) {
-	dependsOn([fatJar, downloadPackr, tailorJRELinux])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath './build/tools/packr.jar'
 	args = [
 		'--platform', 'linux64',
-		'--jdk', "${distributionsDir}/tailoredJRELinux",
+		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_linux_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
 		'--classpath', "${fatJarName}",
 		'--mainclass', "${mainClassName}",
-		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources',
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', 'src/main/resources',
 		'--icon', "src/main/resources/images/icon.png",
 		'--output', "${linuxDistributionOutput}"
@@ -301,50 +278,18 @@ tasks.register('buildLinux', Zip) {
 
 tasks.build.dependsOn(buildLinux)
 
-tasks.register('downloadWindowsJRE', Download) {
-	src "https://download.java.net/java/GA/jdk20.0.1/b4887098932d415489976708ad6d1a4b/9/GPL/openjdk-20.0.1_windows-x64_bin.zip"
-	dest new File(distributionsDir, 'windows-jre-full.zip')
-	overwrite false
-}
-
-tasks.register('getWindowsJRE', Copy) {
-	dependsOn downloadWindowsJRE
-	from zipTree(downloadWindowsJRE.dest)
-	into "${distributionsDir}/windows-jre-full"
-	includeEmptyDirs(false)
-	filesMatching("**") {
-		it.path = it.path.replaceAll("^[a-zA-Z0-9.+-]*[/\\\\]", "jre/")
-	}
-}
-
-tasks.register('tailorJREWindows', Exec) {
-	dependsOn([detectModules, getWindowsJRE])
-	doFirst {
-		workingDir '.'
-		commandLine([
-			"${distributionsDir}/windows-jre-full/jre/bin/jlink.exe",
-			'--no-header-files',
-			'--no-man-pages',
-			'--strip-debug',
-			'--compress=2',
-			'--add-modules', detectModules.detectedModules,
-			'--output', "${distributionsDir}/tailoredJREWindows"
-		])
-	}
-}
-
 tasks.register('prepareWindowsDistribution', JavaExec) {
-	dependsOn([fatJar, downloadPackr, tailorJREWindows])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath './build/tools/packr.jar'
 	args = [
 		'--platform', 'windows64',
-		'--jdk', "${distributionsDir}/tailoredJREWindows",
+		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_windows_hotspot_17.0.7_7.zip",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
 		'--classpath', "${fatJarName}",
 		'--mainclass', "${mainClassName}",
-		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources',
+		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', 'src/main/resources',
 		'--output', "${windowsDistributionOutput}"
 	]
