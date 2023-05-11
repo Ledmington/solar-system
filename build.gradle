@@ -183,6 +183,22 @@ tasks.register('fatJar', Jar) {
 	}
 }
 
+tasks.register('downloadJDGUI', Download) {
+	src "https://github.com/java-decompiler/jd-gui/releases/download/v1.6.6/jd-gui-1.6.6.jar"
+	dest new File(toolsDir, '/jd.jar')
+	overwrite false
+}
+
+tasks.register('decompile', JavaExec) {
+	dependsOn([downloadJDGUI, fatJar])
+	group 'Utilities'
+	description 'Decompiles the fat jar'
+	classpath "${toolsDir}/jd.jar"
+	args = [
+		fatJarName
+	]
+}
+
 tasks.register('downloadPackr', Download) {
 	src "https://github.com/libgdx/packr/releases/download/4.0.0/packr-all-4.0.0.jar"
 	dest new File(toolsDir, '/packr.jar')
