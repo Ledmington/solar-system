@@ -241,7 +241,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                 spriteBatch,
                 String.format(
                         "Closest body: %s (%e)",
-                        closestBody.name(),
+                        closestBody.name().get(),
                         new Vector3(closestBody.position()).scl((float) scale).dst(camera.position)),
                 0.0f,
                 20.0f);

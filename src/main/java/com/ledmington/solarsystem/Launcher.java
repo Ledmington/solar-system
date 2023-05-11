@@ -31,7 +31,7 @@ public final class Launcher extends Game {
 
     public static void main(final String[] args) {
         if (args.length > 0) {
-            System.out.println("No command line arguments needed. Ingoring them.");
+            logger.info("No command line arguments needed. Ingoring them.");
         }
 
         final Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
