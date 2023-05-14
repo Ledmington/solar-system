@@ -33,4 +33,9 @@ public final class Constants {
     public static final String IMAGES_FOLDER = "images";
     public static final String MODELS_FOLDER = "models";
     public static final String DATA_FOLDER = "data";
+
+    /**
+     * The interval between two frames when rendering at 60 FPS.
+     */
+    public static final int ONE_OVER_SIXTY = (int) (1.0 / 60.0);
 }

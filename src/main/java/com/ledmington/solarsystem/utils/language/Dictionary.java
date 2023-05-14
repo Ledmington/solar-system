@@ -39,7 +39,8 @@ import com.ledmington.solarsystem.utils.MiniLogger;
  */
 public final class Dictionary {
 
-    private static Dictionary instance = null;
+    // We create it right away, no need to lazy-load it
+    private static final Dictionary instance = new Dictionary();
 
     /**
      * Singleton method to get the only available {@link Dictionary} instance.
@@ -47,9 +48,6 @@ public final class Dictionary {
      *      The only instance of {@link Dictionary}.
      */
     public static Dictionary getInstance() {
-        if (instance == null) {
-            instance = new Dictionary();
-        }
         return instance;
     }
 

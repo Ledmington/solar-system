@@ -60,6 +60,9 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private final PerspectiveCamera camera;
     private final float initialCameraSpeed = 0.1f;
     private float cameraSpeed = initialCameraSpeed;
+    private final float minFOV = 20.0f; // minimum field of view in degrees
+    private final float maxFOV = 90.0f; // maximum field of view in degrees
+
     private final Viewport viewport;
     private final Renderable renderable;
     private final Map<Body, ModelInstance> bodiesToModels = new HashMap<>();
@@ -75,7 +78,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
         environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 
-        camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera = new PerspectiveCamera(45, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         camera.position.set(100.0f, 100.0f, 100.0f);
         camera.lookAt(0, 0, 0);
         camera.near = 0.1f;
@@ -155,12 +158,23 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     @Override
     public void render(final float delta) {
-        if (loading && assetManager.update()) {
-            doneLoading();
-        }
-
         Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
         viewport.apply();
+
+        if (loading) {
+            if (assetManager.update(Constants.ONE_OVER_SIXTY)) {
+                doneLoading();
+            } else {
+                spriteBatch.begin();
+                font.setColor(Color.WHITE);
+                font.draw(
+                        spriteBatch,
+                        String.format("Loading assets: %3.1f %%", assetManager.getProgress() * 100.0f),
+                        0.0f,
+                        40.0f);
+                spriteBatch.end();
+            }
+        }
 
         // rendering skybox
         if (skyBox != null) {
@@ -300,34 +314,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     @Override
     public boolean keyDown(int keycode) {
-        switch (keycode) {
-            case Keys.W:
-            case Keys.UP:
-                camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
-                cameraSpeed += initialCameraSpeed;
-                camera.update();
-                break;
-        }
-        /*
-         * if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP)) {
-            camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-        if (Gdx.input.isKeyPressed(Keys.S) || Gdx.input.isKeyPressed(Keys.DOWN)) {
-            camera.position.sub(new Vector3(camera.direction).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-        if (Gdx.input.isKeyPressed(Keys.A) || Gdx.input.isKeyPressed(Keys.LEFT)) {
-            camera.position.add(
-                    new Vector3(camera.direction).rotate(camera.up, -90.0f).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-        if (Gdx.input.isKeyPressed(Keys.D) || Gdx.input.isKeyPressed(Keys.RIGHT)) {
-            camera.position.add(
-                    new Vector3(camera.direction).rotate(camera.up, 90.0f).scl(cameraSpeed));
-            cameraSpeed += initialCameraSpeed;
-        }
-         */
         return true;
     }
 
@@ -357,7 +343,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                     new Vector3(camera.direction).rotate(camera.up, 90.0f).scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
         }
-        System.out.println(cameraSpeed);
         return false;
     }
 
@@ -383,6 +368,13 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     @Override
     public boolean scrolled(float amountX, float amountY) {
+        // amountX is currently ignored
+
+        logger.debug("%f", camera.fieldOfView);
+
+        camera.fieldOfView = Math.min(maxFOV, Math.max(minFOV, camera.fieldOfView + amountY));
+        camera.update();
+
         return false;
     }
 }
