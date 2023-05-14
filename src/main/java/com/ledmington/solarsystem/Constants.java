@@ -20,6 +20,9 @@ package com.ledmington.solarsystem;
 public final class Constants {
     private Constants() {}
 
+    public static final int TARGET_RESOLUTION_WIDTH = 1280;
+    public static final int TARGET_RESOLUTION_HEIGHT = 720;
+
     public static final double GRAVITATIONAL_CONSTANT = 6.6743e-11;
 
     /**

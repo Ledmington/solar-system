@@ -45,16 +45,20 @@ import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.viewport.FillViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.ledmington.solarsystem.model.Body;
 import com.ledmington.solarsystem.model.SolarSystem;
+import com.ledmington.solarsystem.utils.FormatUtils;
 import com.ledmington.solarsystem.utils.MiniLogger;
 
 public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     // 10'000km : 1
     private static final double scale = 1.0 / 10_000_000.0;
+    private static final double inverse_scale = 1.0 / scale;
+    private static final float VIEWPORT_WIDTH = (float) Constants.TARGET_RESOLUTION_WIDTH * (float) inverse_scale;
+    private static final float VIEWPORT_HEIGHT = (float) Constants.TARGET_RESOLUTION_HEIGHT * (float) inverse_scale;
     private static final MiniLogger logger = MiniLogger.getLogger("MainScreen");
 
     private final PerspectiveCamera camera;
@@ -66,7 +70,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private final Viewport viewport;
     private final Renderable renderable;
     private final Map<Body, ModelInstance> bodiesToModels = new HashMap<>();
-    private final Map<Body, ModelInstance> debuggingCopy = new HashMap<>();
     private final BitmapFont font = new BitmapFont();
     private final Environment environment;
     private boolean loading;
@@ -79,13 +82,14 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 
         camera = new PerspectiveCamera(45, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        camera.position.set(100.0f, 100.0f, 100.0f);
-        camera.lookAt(0, 0, 0);
+        camera.position.set(
+                new Vector3(SolarSystem.EARTH.position()).scl((float) scale).add(10.0f));
+        camera.lookAt(new Vector3(SolarSystem.EARTH.position()).scl((float) scale));
         camera.near = 0.1f;
         camera.far = 1_000_000.0f;
         camera.update();
 
-        viewport = new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera);
+        viewport = new FitViewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT, camera);
 
         Gdx.input.setInputProcessor((InputProcessor) this);
 
@@ -124,7 +128,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                     new ModelInstance(model, (int) (b.position().x * scale), (int) (b.position().y * scale), (int)
                             (b.position().z * scale));
             bodiesToModels.put(b, instance);
-            debuggingCopy.put(b, instance);
 
             final NodePart blockPart = model.nodes.get(0).parts.get(0);
             blockPart.setRenderable(renderable);
@@ -136,7 +139,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     }
 
     private void doneLoading() {
-        logger.debug("done loading");
         skyBox = new ModelInstance(assetManager.get(skyBoxFileName, Model.class));
 
         SolarSystem.planets().stream().filter(b -> b.hasTexture()).forEach(b -> {
@@ -192,13 +194,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
         final Map<Body, Vector2> bodyToLabelPosition = new HashMap<>();
 
-        /**
-         * The bodies don't have a proper hitbox, we consider the circle we draw
-         * around them as an hitbox.
-         * The Vector3 stored as value is in fact the 2D position and the radius of the circle.
-         */
-        final Map<Body, Vector3> bodyToHitbox = new HashMap<>();
-
         modelBatch.begin(camera);
         // rendering planets
         for (final Map.Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
@@ -206,7 +201,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             final ModelInstance instance = entry.getValue();
             if (isVisible(camera, instance)) {
                 modelBatch.render(instance, environment);
-                final Vector3 labelPosition = camera.project(new Vector3(
+                final Vector3 labelPosition = viewport.project(new Vector3(
                         (float) ((b.position().x + b.radius()) * scale),
                         (float) ((b.position().y + b.radius()) * scale),
                         (float) (b.position().z * scale)));
@@ -229,7 +224,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         for (final Entry<Body, Vector2> entry : bodyToLabelPosition.entrySet()) {
             final Body b = entry.getKey();
             final Vector2 labelPosition = entry.getValue();
-            final Vector3 tmp = camera.project(
+            final Vector3 tmp = viewport.project(
                     new Vector3((float) (b.position().x * scale), (float) (b.position().y * scale), 0.0f));
             final Vector2 bodyPositionOnScreen = new Vector2(tmp.x, tmp.y);
 
@@ -239,8 +234,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             // draw circle around body
             final float circleRadius = (float) (b.radius() * scale + 10);
             shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, circleRadius);
-
-            bodyToHitbox.put(b, new Vector3(bodyPositionOnScreen.x, bodyPositionOnScreen.y, circleRadius));
         }
         shapeRenderer.end();
 
@@ -254,49 +247,16 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         font.draw(
                 spriteBatch,
                 String.format(
-                        "Closest body: %s (%e)",
-                        closestBody.name().get(),
-                        new Vector3(closestBody.position()).scl((float) scale).dst(camera.position)),
+                        "Closest body: %s (%s km)",
+                        closestBody.name().get(), FormatUtils.thousands((long) (new Vector3(closestBody.position())
+                                        .scl((float) scale)
+                                        .dst(camera.position)
+                                - closestBody.radius() * scale))),
                 0.0f,
                 20.0f);
         spriteBatch.end();
 
-        // float viewportX = (2.0f * Gdx.input.getX()) / viewport.getScreenWidth() - 1.0f;
-        // float viewportY = (2.0f * (viewport.getScreenHeight() - Gdx.input.getY())) / viewport.getScreenHeight() -
-        // 1.0f;
-        // System.out.println(viewportX + " , " + viewportY);
-
-        /*****************
-         * HANDLE INPUTS *
-         *****************/
-
-        // if the mouse is over a planet we highlight it
-        for (Entry<Body, Vector3> entry : bodyToHitbox.entrySet()) {
-            final Body b = entry.getKey();
-            final Vector2 bodyPositionOnScreen = new Vector2(entry.getValue().x, entry.getValue().y);
-            final float hitboxRadius = entry.getValue().z;
-
-            if (bodyPositionOnScreen.dst(Gdx.input.getX(), Gdx.graphics.getHeight() - Gdx.input.getY())
-                    < hitboxRadius) {
-                shapeRenderer.begin(ShapeType.Filled);
-                shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.1f);
-                shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, hitboxRadius);
-                shapeRenderer.end();
-
-                // if we click on the planet we look at it
-                if (Gdx.input.isTouched()) {
-                    camera.lookAt(new Vector3(b.position()).scl((float) scale));
-                }
-            }
-        }
-
-        camera.update();
-
-        /***********************
-         * END HANDLING INPUTS *
-         ***********************/
         bodyToLabelPosition.clear();
-        bodyToHitbox.clear();
     }
 
     /**
@@ -325,24 +285,37 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     @Override
     public boolean keyTyped(char character) {
+        // forward
         if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP)) {
-            camera.position.add(new Vector3(camera.direction).scl(cameraSpeed));
+            camera.position.add(camera.direction.cpy().scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
         }
+        // backward
         if (Gdx.input.isKeyPressed(Keys.S) || Gdx.input.isKeyPressed(Keys.DOWN)) {
-            camera.position.sub(new Vector3(camera.direction).scl(cameraSpeed));
+            camera.position.sub(camera.direction.cpy().scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
         }
+        // left
         if (Gdx.input.isKeyPressed(Keys.A) || Gdx.input.isKeyPressed(Keys.LEFT)) {
-            camera.position.add(
-                    new Vector3(camera.direction).rotate(camera.up, -90.0f).scl(cameraSpeed));
+            camera.position.add(camera.direction.cpy().rotate(camera.up, -90.0f).scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
         }
+        // right
         if (Gdx.input.isKeyPressed(Keys.D) || Gdx.input.isKeyPressed(Keys.RIGHT)) {
-            camera.position.add(
-                    new Vector3(camera.direction).rotate(camera.up, 90.0f).scl(cameraSpeed));
+            camera.position.add(camera.direction.cpy().rotate(camera.up, 90.0f).scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
         }
+        // up
+        if (Gdx.input.isKeyPressed(Keys.SPACE)) {
+            camera.position.add(camera.up.cpy().scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+        // down
+        if (Gdx.input.isKeyPressed(Keys.CONTROL_LEFT) || Gdx.input.isKeyPressed(Keys.CONTROL_RIGHT)) {
+            camera.position.sub(camera.up.cpy().scl(cameraSpeed));
+            cameraSpeed += initialCameraSpeed;
+        }
+
         return false;
     }
 
@@ -363,14 +336,37 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     @Override
     public boolean mouseMoved(int screenX, int screenY) {
+        // if the mouse is over a planet we highlight it
+        for (Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
+            final Body b = entry.getKey();
+            final ModelInstance instance = entry.getValue();
+            if (!isVisible(camera, instance)) {
+                continue;
+            }
+
+            final Vector3 bodyPositionOnScreen = viewport.project(
+                    new Vector3((float) (b.position().x * scale), (float) (b.position().y * scale), 0.0f));
+            // final float hitboxRadius = entry.getValue().z;
+
+            // if (bodyPositionOnScreen.dst(Gdx.input.getX(), Gdx.graphics.getHeight() - Gdx.input.getY())
+            //         < hitboxRadius) {
+            //     shapeRenderer.begin(ShapeType.Filled);
+            //     shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.1f);
+            //     shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, hitboxRadius);
+            //     shapeRenderer.end();
+
+            //     // if we click on the planet we look at it
+            //     if (Gdx.input.isTouched()) {
+            //         camera.lookAt(new Vector3(b.position()).scl((float) scale));
+            //     }
+            // }
+        }
         return false;
     }
 
     @Override
     public boolean scrolled(float amountX, float amountY) {
         // amountX is currently ignored
-
-        logger.debug("%f", camera.fieldOfView);
 
         camera.fieldOfView = Math.min(maxFOV, Math.max(minFOV, camera.fieldOfView + amountY));
         camera.update();

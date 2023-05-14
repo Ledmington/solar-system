@@ -17,8 +17,6 @@
 */
 package com.ledmington.solarsystem;
 
-import java.awt.Toolkit;
-
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
@@ -36,9 +34,7 @@ public final class Launcher extends Game {
 
         final Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 
-        config.setWindowedMode(
-                (int) Toolkit.getDefaultToolkit().getScreenSize().getWidth() / 2,
-                (int) Toolkit.getDefaultToolkit().getScreenSize().getHeight() / 2);
+        config.setWindowedMode(1280, 720);
         config.setTitle("Solar System");
         config.useVsync(true);
         config.setIdleFPS(30);
