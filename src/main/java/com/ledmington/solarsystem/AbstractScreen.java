@@ -17,11 +17,15 @@
 */
 package com.ledmington.solarsystem;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.Disposable;
 import com.ledmington.solarsystem.utils.MiniLogger;
 
 /**
@@ -35,6 +39,7 @@ import com.ledmington.solarsystem.utils.MiniLogger;
  *  - each AbstractScreen instance has a ModelBatch called "modelBatch"
  *  - each AbstractScreen instance has a SpriteBatch called "spriteBatch"
  *  - each AbstractScreen instance has a ShapeRenderer called "shapeRenderer"
+ *  - each AbstractScreen instance has a BitmapFont called "font"
  */
 public abstract class AbstractScreen implements Screen {
 
@@ -43,8 +48,14 @@ public abstract class AbstractScreen implements Screen {
     protected final ModelBatch modelBatch = new ModelBatch();
     protected final SpriteBatch spriteBatch = new SpriteBatch();
     protected final ShapeRenderer shapeRenderer = new ShapeRenderer();
+    private final List<Disposable> disposableAssets = new LinkedList<>();
 
     protected AbstractScreen() {}
+
+    protected final <T extends Disposable> T toBeDisposed(final T asset) {
+        this.disposableAssets.add(asset);
+        return asset;
+    }
 
     /**
      * Intentionally empty implementation. Do not call.
@@ -76,6 +87,7 @@ public abstract class AbstractScreen implements Screen {
         modelBatch.dispose();
         spriteBatch.dispose();
         shapeRenderer.dispose();
+        this.disposableAssets.forEach(Disposable::dispose);
 
         /*
          * Tells the JVM to perform a GC after each screen change.

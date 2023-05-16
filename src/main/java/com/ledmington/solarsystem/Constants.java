@@ -38,7 +38,7 @@ public final class Constants {
     public static final String DATA_FOLDER = "data";
 
     /**
-     * The interval between two frames when rendering at 60 FPS.
+     * The interval between two frames when rendering at 60 FPS (in ms).
      */
-    public static final int ONE_OVER_SIXTY = (int) (1.0 / 60.0);
+    public static final int ONE_OVER_SIXTY = (int) (1.0 / 60.0 * 1000.0);
 }
