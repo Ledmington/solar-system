@@ -41,6 +41,7 @@ import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -66,7 +67,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private final float maxFOV = 90.0f; // maximum field of view in degrees
 
     private final Viewport viewport;
-    // private final Renderable renderable;
     private final Map<Body, ModelInstance> bodiesToModels = new HashMap<>();
     private final Environment environment;
     private boolean loading;
@@ -213,6 +213,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             final Vector3 tmp = viewport.project(
                     new Vector3((float) (b.position().x * scale), (float) (b.position().y * scale), 0.0f));
             final Vector2 bodyPositionOnScreen = new Vector2(tmp.x, tmp.y);
+            final float circleRadius = (float) (b.radius() * scale + 10.0);
 
             shapeRenderer.begin(ShapeType.Line);
             shapeRenderer.setColor(Color.WHITE);
@@ -220,7 +221,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             shapeRenderer.line(bodyPositionOnScreen, labelPosition);
 
             // draw circle around body
-            final float circleRadius = (float) (b.radius() * scale + 10.0);
             shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, circleRadius);
             shapeRenderer.end();
         }
@@ -258,9 +258,33 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                 20.0f);
         spriteBatch.end();
 
+        drawZoomSlider();
+
         handleInputs();
 
         bodyToLabelPosition.clear();
+    }
+
+    private void drawZoomSlider() {
+        final float xPosition = viewport.getScreenWidth() * 0.98f;
+        final float yBottom = viewport.getScreenHeight() - (viewport.getScreenHeight() * 0.98f);
+        final float sliderWidth = 10.0f;
+        final float sliderHeight = viewport.getScreenHeight() * 0.2f;
+        final float knobRadius = sliderWidth * 1.1f;
+        final float knobY = MathUtils.map(minFOV, maxFOV, yBottom + sliderHeight, yBottom, camera.fieldOfView);
+
+        Gdx.gl.glEnable(GL30.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
+        shapeRenderer.begin(ShapeType.Filled);
+        shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.2f);
+        shapeRenderer.arc(
+                (xPosition + xPosition + sliderWidth) / 2, yBottom + sliderHeight, sliderWidth / 2, 0.0f, 180.0f, 10);
+        shapeRenderer.rect(xPosition, yBottom, sliderWidth, sliderHeight);
+        shapeRenderer.arc((xPosition + xPosition + sliderWidth) / 2, yBottom, sliderWidth / 2, 180.0f, 180.0f, 10);
+        shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.8f);
+        shapeRenderer.circle((xPosition + xPosition + sliderWidth) / 2, knobY, knobRadius, 10);
+        shapeRenderer.end();
+        Gdx.gl.glDisable(GL30.GL_BLEND);
     }
 
     private void handleInputs() {
@@ -294,6 +318,36 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             camera.position.sub(camera.up.cpy().scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
         }
+
+        // if the mouse is over a planet we highlight it
+        for (Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
+            final Body b = entry.getKey();
+            final ModelInstance instance = entry.getValue();
+            if (!isVisible(camera, instance)) {
+                continue;
+            }
+
+            final Vector2 bodyPositionOnScreen =
+                    viewport.project(new Vector2((float) (b.position().x * scale), (float) (b.position().y * scale)));
+            bodyPositionOnScreen.y = viewport.getScreenHeight() - bodyPositionOnScreen.y;
+
+            final double distanceFromCamera = (double) camera.position.dst(b.position());
+            final float hitboxRadius =
+                    MathUtils.clamp((float) (b.radius() * distanceFromCamera * scale), 10.0f, 100.0f);
+            logger.debug("%s -> %f", bodyPositionOnScreen.toString(), hitboxRadius);
+
+            if (bodyPositionOnScreen.dst(Gdx.input.getX(), Gdx.input.getY()) < hitboxRadius) {
+                shapeRenderer.begin(ShapeType.Filled);
+                shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.1f);
+                shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, hitboxRadius);
+                shapeRenderer.end();
+
+                // if we click on the planet we look at it
+                if (Gdx.input.isTouched()) {
+                    camera.lookAt(b.position().cpy().scl((float) scale));
+                }
+            }
+        }
     }
 
     /**
@@ -306,7 +360,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     }
 
     public void resize(final int width, final int height) {
-        viewport.update(width, height);
+        viewport.update(width, height, false);
     }
 
     @Override
@@ -342,31 +396,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     @Override
     public boolean mouseMoved(int screenX, int screenY) {
-        // if the mouse is over a planet we highlight it
-        for (Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
-            final Body b = entry.getKey();
-            final ModelInstance instance = entry.getValue();
-            if (!isVisible(camera, instance)) {
-                continue;
-            }
-
-            final Vector3 bodyPositionOnScreen = viewport.project(
-                    new Vector3((float) (b.position().x * scale), (float) (b.position().y * scale), 0.0f));
-            // final float hitboxRadius = entry.getValue().z;
-
-            // if (bodyPositionOnScreen.dst(Gdx.input.getX(), Gdx.graphics.getHeight() - Gdx.input.getY())
-            //         < hitboxRadius) {
-            //     shapeRenderer.begin(ShapeType.Filled);
-            //     shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.1f);
-            //     shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, hitboxRadius);
-            //     shapeRenderer.end();
-
-            //     // if we click on the planet we look at it
-            //     if (Gdx.input.isTouched()) {
-            //         camera.lookAt(b.position().cpy().scl((float) scale));
-            //     }
-            // }
-        }
         return false;
     }
 
