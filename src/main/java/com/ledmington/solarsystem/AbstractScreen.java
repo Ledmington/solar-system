@@ -83,10 +83,15 @@ public abstract class AbstractScreen implements Screen {
 
     @Override
     public final void dispose() {
+        logger.debug("disposing asset manager");
         assetManager.clear();
+        logger.debug("disposing model batch");
         modelBatch.dispose();
+        logger.debug("disposing sprite batch");
         spriteBatch.dispose();
+        logger.debug("disposing shape renderer");
         shapeRenderer.dispose();
+        logger.debug("disposing additional assets");
         this.disposableAssets.forEach(Disposable::dispose);
 
         /*

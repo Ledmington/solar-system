@@ -27,6 +27,8 @@ public final class Launcher extends Game {
 
     private static final MiniLogger logger = MiniLogger.getLogger("Launcher");
 
+    private Launcher() {}
+
     public static void main(final String[] args) {
         if (args.length > 0) {
             logger.info("No command line arguments needed. Ingoring them.");
@@ -34,13 +36,13 @@ public final class Launcher extends Game {
 
         final Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 
-        config.setWindowedMode(1280, 720);
+        config.setWindowedMode(Constants.TARGET_RESOLUTION_WIDTH, Constants.TARGET_RESOLUTION_HEIGHT);
         config.setTitle("Solar System");
         config.useVsync(true);
         config.setIdleFPS(30);
         config.setForegroundFPS(60);
-        config.setResizable(true);
-        config.setWindowSizeLimits(800, 480, -1, -1);
+        config.setResizable(false);
+        config.setWindowSizeLimits(1280, 720, -1, -1);
         config.setWindowIcon(FileType.Internal, Constants.IMAGES_FOLDER + "/icon.png");
         new Lwjgl3Application(new Launcher(), config);
     }

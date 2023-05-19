@@ -55,16 +55,15 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     // 10'000km : 1
     private static final double scale = 1.0 / 10_000_000.0;
-    private static final double inverse_scale = 1.0 / scale;
-    private static final float VIEWPORT_WIDTH = (float) Constants.TARGET_RESOLUTION_WIDTH * (float) inverse_scale;
-    private static final float VIEWPORT_HEIGHT = (float) Constants.TARGET_RESOLUTION_HEIGHT * (float) inverse_scale;
+    private static final float VIEWPORT_WIDTH = (float) Constants.TARGET_RESOLUTION_WIDTH * 0.1f;
+    private static final float VIEWPORT_HEIGHT = (float) Constants.TARGET_RESOLUTION_HEIGHT * 0.1f;
     private static final MiniLogger logger = MiniLogger.getLogger("MainScreen");
 
     private final PerspectiveCamera camera;
     private final float initialCameraSpeed = 0.1f;
     private float cameraSpeed = initialCameraSpeed;
     private final float minFOV = 20.0f; // minimum field of view in degrees
-    private final float maxFOV = 90.0f; // maximum field of view in degrees
+    private final float maxFOV = 80.0f; // maximum field of view in degrees
 
     private final Viewport viewport;
     private final Map<Body, ModelInstance> bodiesToModels = new HashMap<>();
@@ -79,7 +78,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
         environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 
-        camera = new PerspectiveCamera(45, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera = new PerspectiveCamera(45.0f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         camera.position.set(
                 SolarSystem.EARTH.position().cpy().scl((float) scale).add(10.0f));
         camera.lookAt(SolarSystem.EARTH.position().cpy().scl((float) scale));
@@ -265,26 +264,58 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         bodyToLabelPosition.clear();
     }
 
+    private void setCameraFOV(final float newFOV) {
+        camera.fieldOfView = MathUtils.clamp(newFOV, minFOV, maxFOV);
+        camera.update();
+    }
+
     private void drawZoomSlider() {
-        final float xPosition = viewport.getScreenWidth() * 0.98f;
-        final float yBottom = viewport.getScreenHeight() - (viewport.getScreenHeight() * 0.98f);
-        final float sliderWidth = 10.0f;
-        final float sliderHeight = viewport.getScreenHeight() * 0.2f;
-        final float knobRadius = sliderWidth * 1.1f;
-        final float knobY = MathUtils.map(minFOV, maxFOV, yBottom + sliderHeight, yBottom, camera.fieldOfView);
+        final float zoomSliderXPosition = viewport.getScreenWidth() * 0.98f;
+        final float zoomSliderYPosition = viewport.getScreenHeight() - (viewport.getScreenHeight() * 0.98f);
+        final float zoomSliderWidth = 10.0f;
+        final float zoomSliderHeight = viewport.getScreenHeight() * 0.2f;
+        final float zoomSliderKnobRadius = zoomSliderWidth * 1.1f;
+        final float zoomSliderKnobYPosition = MathUtils.map(
+                minFOV, maxFOV, zoomSliderYPosition + zoomSliderHeight, zoomSliderYPosition, camera.fieldOfView);
+        final float zoomSliderXCenter = (2 * zoomSliderXPosition + zoomSliderWidth) / 2;
+
+        float zoomSliderTransparency;
+        float zoomSliderKnobTransparency;
+
+        // shortcuts
+        final float mouseX = (float) Gdx.input.getX();
+        final float mouseY = (float) (viewport.getScreenHeight() - Gdx.input.getY());
+
+        if (mouseX >= zoomSliderXCenter - zoomSliderKnobRadius
+                && mouseX <= zoomSliderXCenter + zoomSliderKnobRadius
+                && mouseY >= zoomSliderYPosition - zoomSliderWidth / 2
+                && mouseY <= zoomSliderYPosition + zoomSliderHeight + zoomSliderWidth / 2) {
+            zoomSliderTransparency = 0.4f;
+            zoomSliderKnobTransparency = 1.0f;
+        } else {
+            zoomSliderTransparency = 0.2f;
+            zoomSliderKnobTransparency = 0.8f;
+        }
 
         Gdx.gl.glEnable(GL30.GL_BLEND);
         Gdx.gl.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
         shapeRenderer.begin(ShapeType.Filled);
-        shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.2f);
+        shapeRenderer.setColor(1.0f, 1.0f, 1.0f, zoomSliderTransparency);
         shapeRenderer.arc(
-                (xPosition + xPosition + sliderWidth) / 2, yBottom + sliderHeight, sliderWidth / 2, 0.0f, 180.0f, 10);
-        shapeRenderer.rect(xPosition, yBottom, sliderWidth, sliderHeight);
-        shapeRenderer.arc((xPosition + xPosition + sliderWidth) / 2, yBottom, sliderWidth / 2, 180.0f, 180.0f, 10);
-        shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.8f);
-        shapeRenderer.circle((xPosition + xPosition + sliderWidth) / 2, knobY, knobRadius, 10);
+                zoomSliderXCenter, zoomSliderYPosition + zoomSliderHeight, zoomSliderWidth / 2, 0.0f, 180.0f, 10);
+        shapeRenderer.rect(zoomSliderXPosition, zoomSliderYPosition, zoomSliderWidth, zoomSliderHeight);
+        shapeRenderer.arc(zoomSliderXCenter, zoomSliderYPosition, zoomSliderWidth / 2, 180.0f, 180.0f, 10);
+        shapeRenderer.setColor(1.0f, 1.0f, 1.0f, zoomSliderKnobTransparency);
+        shapeRenderer.circle(zoomSliderXCenter, zoomSliderKnobYPosition, zoomSliderKnobRadius, 10);
         shapeRenderer.end();
         Gdx.gl.glDisable(GL30.GL_BLEND);
+
+        if (Gdx.input.isTouched()) {
+            // zoom slider is clicked
+            final float newFOV =
+                    MathUtils.map(zoomSliderYPosition + zoomSliderHeight, zoomSliderYPosition, minFOV, maxFOV, mouseY);
+            setCameraFOV(newFOV);
+        }
     }
 
     private void handleInputs() {
@@ -331,16 +362,19 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                     viewport.project(new Vector2((float) (b.position().x * scale), (float) (b.position().y * scale)));
             bodyPositionOnScreen.y = viewport.getScreenHeight() - bodyPositionOnScreen.y;
 
-            final double distanceFromCamera = (double) camera.position.dst(b.position());
-            final float hitboxRadius =
-                    MathUtils.clamp((float) (b.radius() * distanceFromCamera * scale), 10.0f, 100.0f);
-            logger.debug("%s -> %f", bodyPositionOnScreen.toString(), hitboxRadius);
+            // final double distanceFromCamera = (double) camera.position.dst(b.position());
+            // final float hitboxRadius =
+            // MathUtils.clamp((float) (b.radius() * distanceFromCamera * scale), 10.0f, 100.0f);
+            final float hitboxRadius = (float) (b.radius() * scale + 10.0);
 
             if (bodyPositionOnScreen.dst(Gdx.input.getX(), Gdx.input.getY()) < hitboxRadius) {
+                Gdx.gl.glEnable(GL30.GL_BLEND);
+                Gdx.gl.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
                 shapeRenderer.begin(ShapeType.Filled);
                 shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.1f);
                 shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, hitboxRadius);
                 shapeRenderer.end();
+                Gdx.gl.glDisable(GL30.GL_BLEND);
 
                 // if we click on the planet we look at it
                 if (Gdx.input.isTouched()) {
@@ -403,8 +437,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     public boolean scrolled(float amountX, float amountY) {
         // amountX is currently ignored
 
-        camera.fieldOfView = Math.min(maxFOV, Math.max(minFOV, camera.fieldOfView + amountY));
-        camera.update();
+        setCameraFOV(camera.fieldOfView + amountY);
 
         return false;
     }
