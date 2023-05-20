@@ -20,10 +20,16 @@ package com.ledmington.solarsystem;
 public final class Constants {
     private Constants() {}
 
-    public static final int TARGET_RESOLUTION_WIDTH = 1920;
-    public static final int TARGET_RESOLUTION_HEIGHT = 1080;
+    public static final int TARGET_RESOLUTION_WIDTH = 1280;
+    public static final int TARGET_RESOLUTION_HEIGHT = 720;
 
     public static final double GRAVITATIONAL_CONSTANT = 6.6743e-11;
+
+    /**
+     * Current scale of the solar system.
+     * 10'000km : 1
+     */
+    public static final double SCALE = 1.0 / 10_000_000.0;
 
     /**
      * One AU in meters.

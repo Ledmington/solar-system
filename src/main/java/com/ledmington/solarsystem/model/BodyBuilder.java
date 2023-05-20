@@ -28,7 +28,7 @@ public final class BodyBuilder {
     private double massInKilograms = -1.0;
     private Vector3 position = Vector3.Zero;
     private Vector3 speed = Vector3.Zero;
-    private Color color = Color.WHITE;
+    private Optional<Color> color = Optional.of(Color.WHITE);
     private Optional<String> texture = Optional.empty();
     private boolean positionHasBeenSet = false;
     private boolean speedHasBeenSet = false;
@@ -86,21 +86,15 @@ public final class BodyBuilder {
     }
 
     public BodyBuilder color(final Color color) {
-        if (this.textureHasBeenSet) {
-            throw new IllegalStateException("Cannot set Body's color and the texture");
-        }
         if (this.colorHasBeenSet) {
             throw new IllegalStateException("Cannot set Body's color twice");
         }
-        this.color = color;
+        this.color = Optional.of(color);
         this.colorHasBeenSet = true;
         return this;
     }
 
     public BodyBuilder texture(final String texture) {
-        if (this.colorHasBeenSet) {
-            throw new IllegalStateException("Cannot set Body's texture and the color");
-        }
         if (this.textureHasBeenSet) {
             throw new IllegalStateException("Cannot set Body's texture twice");
         }
@@ -122,7 +116,7 @@ public final class BodyBuilder {
                 this.massInKilograms,
                 this.position,
                 this.speed,
-                Optional.of(this.color),
+                this.color,
                 this.texture);
     }
 }

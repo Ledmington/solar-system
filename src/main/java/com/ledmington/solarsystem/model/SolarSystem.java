@@ -43,6 +43,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (0.307 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 47_360, 0))
             .texture(Constants.MODELS_FOLDER + "/mercury.jpg")
+            .color(Color.RED)
             .build();
     public static final Body VENUS = Body.builder()
             .name("venus")
@@ -51,6 +52,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (0.718 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 35_020, 0))
             .texture(Constants.MODELS_FOLDER + "/venus.jpg")
+            .color(Color.CYAN)
             .build();
     public static final Body EARTH = Body.builder()
             .name("earth")
@@ -59,6 +61,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (1.0 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 29_782.7f, 0))
             .texture(Constants.MODELS_FOLDER + "/earth.jpg")
+            .color(Color.BLUE)
             .build();
     public static final Body MOON = Body.builder()
             .name("moon")
@@ -75,6 +78,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (1.382 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 24_070, 0))
             .texture(Constants.MODELS_FOLDER + "/mars.jpg")
+            .color(Color.RED)
             .build();
     public static final Body PHOBOS = Body.builder()
             .name("phobos")
@@ -97,6 +101,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (5.2 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 13_070, 0))
             .texture(Constants.MODELS_FOLDER + "/jupiter.jpg")
+            .color(Color.RED)
             .build();
     public static final Body IO = Body.builder()
             .name("io")
@@ -133,6 +138,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (9.075 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 9_680, 0))
             .texture(Constants.MODELS_FOLDER + "/saturn.jpg")
+            .color(Color.CYAN)
             .build();
     public static final Body ENCELADUS = Body.builder()
             .name("enceladus")
@@ -155,6 +161,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (19.0 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 6_800, 0))
             .texture(Constants.MODELS_FOLDER + "/uranus.jpg")
+            .color(Color.WHITE)
             .build();
     public static final Body NEPTUNE = Body.builder()
             .name("neptune")
@@ -163,6 +170,7 @@ public final class SolarSystem {
             .position(new Vector3((float) (30.0 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 5_430, 0))
             .texture(Constants.MODELS_FOLDER + "/neptune.jpg")
+            .color(Color.WHITE)
             .build();
     public static final Body PLUTO = Body.builder()
             .name("pluto")
@@ -170,6 +178,7 @@ public final class SolarSystem {
             .mass(1.303e22)
             .position(new Vector3((float) (39.5 * Constants.oneAstronomicalUnit), 0, 0))
             .speed(new Vector3(0, 4_743, 0))
+            .color(Color.WHITE)
             .build();
 
     public static final List<Body> planets() {

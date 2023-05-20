@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
+import com.ledmington.solarsystem.Constants;
 import com.ledmington.solarsystem.utils.language.Dictionary;
 
 public final record Body(
@@ -46,5 +47,13 @@ public final record Body(
 
     public boolean hasTexture() {
         return this.texture.isPresent();
+    }
+
+    public Vector3 scaledPosition() {
+        return position.cpy().scl((float) Constants.SCALE);
+    }
+
+    public float scaledRadius() {
+        return (float) (radius * Constants.SCALE);
     }
 }

@@ -19,6 +19,7 @@ package com.ledmington.solarsystem;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
@@ -54,10 +55,8 @@ import com.ledmington.solarsystem.utils.MiniLogger;
 
 public final class MainScreen extends AbstractScreen implements InputProcessor {
 
-    // 10'000km : 1
-    private static final double scale = 1.0 / 10_000_000.0;
-    private static final float VIEWPORT_WIDTH = (float) Constants.TARGET_RESOLUTION_WIDTH * 0.1f;
-    private static final float VIEWPORT_HEIGHT = (float) Constants.TARGET_RESOLUTION_HEIGHT * 0.1f;
+    private static final float VIEWPORT_WIDTH = (float) Constants.TARGET_RESOLUTION_WIDTH * 0.2f;
+    private static final float VIEWPORT_HEIGHT = (float) Constants.TARGET_RESOLUTION_HEIGHT * 0.2f;
     private static final MiniLogger logger = MiniLogger.getLogger("MainScreen");
 
     private final PerspectiveCamera camera;
@@ -73,7 +72,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private final String skyBoxFileName = Constants.MODELS_FOLDER + "/skybox.obj";
     private ModelInstance skyBox;
     private final BitmapFont font = toBeDisposed(new BitmapFont());
-    private final float solarsystemWidth = (float) (SolarSystem.PLUTO.position().x * scale);
+    private final float solarsystemWidth = SolarSystem.PLUTO.scaledPosition().x;
     private float mouseX;
     private float mouseY;
     private boolean isTouched = false;
@@ -84,9 +83,8 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 
         camera = new PerspectiveCamera(45.0f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        camera.position.set(
-                SolarSystem.EARTH.position().cpy().scl((float) scale).add(10.0f));
-        camera.lookAt(SolarSystem.EARTH.position().cpy().scl((float) scale));
+        camera.position.set(SolarSystem.EARTH.scaledPosition().add(10.0f));
+        camera.lookAt(SolarSystem.EARTH.scaledPosition());
         camera.near = 0.1f;
         camera.far = 1_000_000.0f;
         camera.update();
@@ -97,8 +95,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
         // creating and adding the models
         for (final Body b : SolarSystem.planets()) {
-            final float scaledRadius = (float) (b.radius() * scale);
-
             Material material;
             if (b.hasTexture()) {
                 logger.debug(
@@ -113,17 +109,15 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             }
             final Model model = toBeDisposed(new ModelBuilder()
                     .createSphere(
-                            scaledRadius,
-                            scaledRadius,
-                            scaledRadius,
+                            b.scaledRadius(),
+                            b.scaledRadius(),
+                            b.scaledRadius(),
                             20,
                             20,
                             material,
                             Usage.Position | Usage.Normal | Usage.TextureCoordinates));
 
-            final ModelInstance instance =
-                    new ModelInstance(model, (float) (b.position().x * scale), (float) (b.position().y * scale), (float)
-                            (b.position().z * scale));
+            final ModelInstance instance = new ModelInstance(model, b.scaledPosition());
             bodiesToModels.put(b, instance);
         }
 
@@ -201,9 +195,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             if (isVisible(camera, instance)) {
                 modelBatch.render(instance, environment);
                 final Vector3 labelPosition = viewport.project(new Vector3(
-                        (float) ((b.position().x + b.radius()) * scale),
-                        (float) ((b.position().y + b.radius()) * scale),
-                        0.0f));
+                        b.scaledPosition().x + b.scaledRadius(), b.scaledPosition().y + b.scaledRadius(), 0.0f));
                 bodyToLabelPosition.put(b, new Vector2(labelPosition.x, labelPosition.y));
             }
         }
@@ -223,10 +215,9 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             font.draw(spriteBatch, b.name().orElseThrow(), labelPosition.x + 10, labelPosition.y + 10);
             spriteBatch.end();
 
-            final Vector3 tmp = viewport.project(
-                    new Vector3((float) (b.position().x * scale), (float) (b.position().y * scale), 0.0f));
+            final Vector3 tmp = viewport.project(new Vector3(b.scaledPosition().x, b.scaledPosition().y, 0.0f));
             final Vector2 bodyPositionOnScreen = new Vector2(tmp.x, tmp.y);
-            final float circleRadius = (float) (b.radius() * scale + 10.0);
+            final float circleRadius = b.scaledRadius() + 10.0f;
 
             shapeRenderer.begin(ShapeType.Line);
             shapeRenderer.setColor(Color.WHITE);
@@ -249,24 +240,20 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
                 // if we click on the planet we look at it
                 if (isTouched) {
-                    camera.lookAt(b.position().cpy().scl((float) scale));
+                    camera.lookAt(b.scaledPosition());
                 }
             }
         }
 
         final Body closestBody = SolarSystem.planets().stream()
-                .min(Comparator.comparing(
-                        b -> b.position().cpy().scl((float) scale).dst(camera.position)))
+                .min(Comparator.comparing(b -> b.scaledPosition().dst(camera.position)))
                 .orElseThrow();
 
-        final long distance = (long)
-                (closestBody.position().cpy().scl((float) scale).dst(camera.position) - closestBody.radius() * scale);
+        final long distance = (long) (closestBody.scaledPosition().dst(camera.position) - closestBody.scaledRadius());
         final long distanceToSun =
-                (long) (SolarSystem.SUN.position().cpy().scl((float) scale).dst(camera.position)
-                        - SolarSystem.SUN.radius() * scale);
+                (long) (SolarSystem.SUN.scaledPosition().dst(camera.position) - SolarSystem.SUN.scaledRadius());
         final long distanceToEarth =
-                (long) (SolarSystem.EARTH.position().cpy().scl((float) scale).dst(camera.position)
-                        - SolarSystem.EARTH.radius() * scale);
+                (long) (SolarSystem.EARTH.scaledPosition().dst(camera.position) - SolarSystem.EARTH.scaledRadius());
         spriteBatch.begin();
         font.setColor(Color.WHITE);
         font.draw(
@@ -317,54 +304,23 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         // drawing the sun
         shapeRenderer.setColor(Color.YELLOW);
         shapeRenderer.circle(minimapXCenter, minimapYCenter, 6.0f);
-        // drawing mercury
-        shapeRenderer.setColor(Color.RED);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.MERCURY.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.MERCURY.position().y * scale)),
-                2.0f);
-        // drawing venus
-        shapeRenderer.setColor(Color.CYAN);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.VENUS.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.VENUS.position().y * scale)),
-                2.0f);
-        // drawing the earth
-        shapeRenderer.setColor(Color.BLUE);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.EARTH.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.EARTH.position().y * scale)),
-                2.0f);
-        // drawing mars
-        shapeRenderer.setColor(Color.RED);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.MARS.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.MARS.position().y * scale)),
-                2.0f);
-        // drawing jupiter
-        shapeRenderer.setColor(Color.RED);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.JUPITER.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.JUPITER.position().y * scale)),
-                3.0f);
-        // drawing saturn
-        shapeRenderer.setColor(Color.CYAN);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.SATURN.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.SATURN.position().y * scale)),
-                3.0f);
-        // drawing uranus
-        shapeRenderer.setColor(Color.WHITE);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.URANUS.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.URANUS.position().y * scale)),
-                3.0f);
-        // drawing pluto
-        shapeRenderer.setColor(Color.WHITE);
-        shapeRenderer.circle(
-                fromWorldToMinimapX.apply((float) (SolarSystem.PLUTO.position().x * scale)),
-                fromWorldToMinimapY.apply((float) (SolarSystem.PLUTO.position().y * scale)),
-                3.0f);
+        // drawing all the planets
+        for (Body b : List.of(
+                SolarSystem.MERCURY,
+                SolarSystem.VENUS,
+                SolarSystem.EARTH,
+                SolarSystem.MARS,
+                SolarSystem.JUPITER,
+                SolarSystem.SATURN,
+                SolarSystem.URANUS,
+                SolarSystem.NEPTUNE,
+                SolarSystem.PLUTO)) {
+            shapeRenderer.setColor(b.color().orElseThrow());
+            shapeRenderer.circle(
+                    fromWorldToMinimapX.apply(b.scaledPosition().x),
+                    fromWorldToMinimapY.apply(b.scaledPosition().y),
+                    3.0f);
+        }
         shapeRenderer.end();
 
         // drawing camera
