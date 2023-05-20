@@ -17,6 +17,7 @@
 */
 package com.ledmington.solarsystem;
 
+import java.io.File;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -69,7 +70,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private final Map<Body, ModelInstance> bodiesToModels = new HashMap<>();
     private final Environment environment;
     private boolean loading;
-    private final String skyBoxFileName = Constants.MODELS_FOLDER + "/skybox.obj";
+    private final String skyBoxFileName = Constants.MODELS_FOLDER + File.separator + "skybox.obj";
     private ModelInstance skyBox;
     private final BitmapFont font = toBeDisposed(new BitmapFont());
     private final float solarsystemWidth = SolarSystem.PLUTO.scaledPosition().x;
@@ -78,6 +79,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private boolean isTouched = false;
 
     public MainScreen() {
+        super("MainScreen");
         environment = new Environment();
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
         environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
@@ -205,6 +207,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             final Body b = entry.getKey();
             final Vector2 labelPosition = entry.getValue();
             final ModelInstance instance = bodiesToModels.get(b);
+            logger.debug("processing %s", b.name().orElseThrow());
             if (!isVisible(camera, instance)) {
                 continue;
             }
@@ -336,8 +339,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                 .rotate(camera.up, fieldOfViewX / 2)
                 .setLength(10_000.0f)
                 .sub(camera.position);
-
-        logger.debug("%f; %f - %f; %f", leftSide.x, leftSide.y, rightSide.x, rightSide.y);
 
         shapeRenderer.begin(ShapeType.Line);
         shapeRenderer.setColor(Color.WHITE);

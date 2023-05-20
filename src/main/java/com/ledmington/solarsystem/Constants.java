@@ -17,6 +17,8 @@
 */
 package com.ledmington.solarsystem;
 
+import java.io.File;
+
 public final class Constants {
     private Constants() {}
 
@@ -38,7 +40,7 @@ public final class Constants {
 
     public static final String RESOURCES_DIR = System.getProperties().containsKey("resources.dir")
             ? System.getProperty("resources.dir")
-            : "./src/main/resources";
+            : String.join(File.separator, ".", "src", "main", "resources");
     public static final String IMAGES_FOLDER = "images";
     public static final String MODELS_FOLDER = "models";
     public static final String DATA_FOLDER = "data";

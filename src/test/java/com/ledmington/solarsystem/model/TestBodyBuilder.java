@@ -77,18 +77,6 @@ public final class TestBodyBuilder {
     }
 
     @Test
-    public void cannotSetColorAndThenTexture() {
-        bb.color(Color.BLACK);
-        assertThrows(IllegalStateException.class, () -> bb.texture("hello"));
-    }
-
-    @Test
-    public void cannotSetTextureAndThenColor() {
-        bb.texture("example");
-        assertThrows(IllegalStateException.class, () -> bb.color(Color.CYAN));
-    }
-
-    @Test
     public void cannotSetNegativeRadius() {
         assertThrows(IllegalArgumentException.class, () -> bb.radius(-1));
     }

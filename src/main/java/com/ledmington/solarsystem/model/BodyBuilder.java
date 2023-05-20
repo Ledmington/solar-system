@@ -17,10 +17,12 @@
 */
 package com.ledmington.solarsystem.model;
 
+import java.io.File;
 import java.util.Optional;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector3;
+import com.ledmington.solarsystem.Constants;
 
 public final class BodyBuilder {
     private String name = null;
@@ -98,7 +100,7 @@ public final class BodyBuilder {
         if (this.textureHasBeenSet) {
             throw new IllegalStateException("Cannot set Body's texture twice");
         }
-        this.texture = Optional.of(texture);
+        this.texture = Optional.of(Constants.MODELS_FOLDER + File.separator + texture);
         this.textureHasBeenSet = true;
         return this;
     }

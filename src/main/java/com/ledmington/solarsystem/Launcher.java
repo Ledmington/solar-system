@@ -17,6 +17,8 @@
 */
 package com.ledmington.solarsystem;
 
+import java.io.File;
+
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
@@ -31,7 +33,7 @@ public final class Launcher extends Game {
 
     public static void main(final String[] args) {
         if (args.length > 0) {
-            logger.info("No command line arguments needed. Ingoring them.");
+            logger.info("No command line arguments needed. Ignoring them.");
         }
 
         final Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
@@ -43,8 +45,13 @@ public final class Launcher extends Game {
         config.setForegroundFPS(60);
         config.setResizable(false);
         config.setWindowSizeLimits(1280, 720, -1, -1);
-        config.setWindowIcon(FileType.Internal, Constants.IMAGES_FOLDER + "/icon.png");
-        new Lwjgl3Application(new Launcher(), config);
+        config.setWindowIcon(FileType.Internal, Constants.IMAGES_FOLDER + File.separator + "icon.png");
+
+        try {
+            new Lwjgl3Application(new Launcher(), config);
+        } catch (Throwable t) {
+            logger.error(t);
+        }
     }
 
     @Override

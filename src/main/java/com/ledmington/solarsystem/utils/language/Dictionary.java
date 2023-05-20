@@ -18,6 +18,7 @@
 package com.ledmington.solarsystem.utils.language;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public final class Dictionary {
     private final Map<String, Language> nameToLanguage = new HashMap<>();
     private final Map<Language, Map<String, String>> dict = new HashMap<>();
     private Language lang = Language.ENGLISH;
-    private final MiniLogger logger = MiniLogger.getLogger(getClass().getSimpleName());
+    private final MiniLogger logger = MiniLogger.getLogger("Dictionary");
 
     private Dictionary() {
         for (Language l : Language.values()) {
@@ -63,8 +64,8 @@ public final class Dictionary {
 
         long t = System.nanoTime();
         String line;
-        try (BufferedReader br = new BufferedReader(
-                new FileReader(Constants.RESOURCES_DIR + "/" + Constants.DATA_FOLDER + "/dictionary.csv"))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(
+                String.join(File.separator, Constants.RESOURCES_DIR, Constants.DATA_FOLDER, "dictionary.csv")))) {
             final String[] languages = br.readLine().split(",");
             final List<BiConsumer<String, String>> consumers = new ArrayList<>();
             for (int i = 1; i < languages.length; i++) {
