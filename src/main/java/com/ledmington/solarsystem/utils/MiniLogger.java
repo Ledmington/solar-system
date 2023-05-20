@@ -159,4 +159,23 @@ public final class MiniLogger {
     public void error(final String formatString, final Object... args) {
         log(formatString, "ERROR", args);
     }
+
+    /**
+     *
+     * @param t
+     */
+    public void error(final Throwable t) {
+        if (t.getMessage() != null) {
+            error(t.getMessage());
+        } else {
+            error("null");
+        }
+        for (StackTraceElement ste : t.getStackTrace()) {
+            error("  " + ste.toString());
+        }
+        if (t.getCause() != null) {
+            error("Caused by:");
+            error(t.getCause());
+        }
+    }
 }

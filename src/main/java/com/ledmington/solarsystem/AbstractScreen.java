@@ -44,13 +44,15 @@ import com.ledmington.solarsystem.utils.MiniLogger;
 public abstract class AbstractScreen implements Screen {
 
     protected final AssetManager assetManager = new AssetManager();
-    protected final MiniLogger logger = MiniLogger.getLogger(getClass().getSimpleName());
+    protected final MiniLogger logger;
     protected final ModelBatch modelBatch = new ModelBatch();
     protected final SpriteBatch spriteBatch = new SpriteBatch();
     protected final ShapeRenderer shapeRenderer = new ShapeRenderer();
     private final List<Disposable> disposableAssets = new LinkedList<>();
 
-    protected AbstractScreen() {}
+    protected AbstractScreen(final String loggerName) {
+        this.logger = MiniLogger.getLogger(loggerName);
+    }
 
     protected final <T extends Disposable> T toBeDisposed(final T asset) {
         this.disposableAssets.add(asset);
