@@ -22,30 +22,34 @@ repositories {
 	mavenCentral()
 }
 
+static def path(String... args) {
+	return String.join(File.separator, args)
+}
+
 String appName = 'solarsystem'
 String version = '0.1.0'
 String appDescription = 'A real-time solar system simulation.'
 String author = 'Filippo Barbari'
 String authorMail = 'filippo.barbari@gmail.com'
 String mainClassName = 'com.ledmington.solarsystem.Launcher'
-String fatJarPath = "${buildDir}/libs"
-String fatJarName = "${fatJarPath}/${appName}.jar"
-String shadowJarName = "${fatJarPath}/${appName}-${version}.jar"
-String toolsDir = "${buildDir}/tools"
-String distributionsDir = "${buildDir}/distributions"
-String linuxArm64DistributionOutput = "${distributionsDir}/linux-aarch64"
+String fatJarPath = path("${buildDir}", "libs")
+String fatJarName = path(fatJarPath, "${appName}.jar")
+String shadowJarName = path(fatJarPath, "${appName}-${version}.jar")
+String toolsDir = path("${buildDir}", "tools")
+String distributionsDir = path("${buildDir}", "distributions")
+String linuxArm64DistributionOutput = path(distributionsDir, "linux-aarch64")
 String linuxArm64DistributionName = "${appName}-linux-aarch64.tar.gz"
-String linuxArm32DistributionOutput = "${distributionsDir}/linux-arm"
+String linuxArm32DistributionOutput = path(distributionsDir, "linux-arm")
 String linuxArm32DistributionName = "${appName}-linux-arm.tar.gz"
-String linuxX64DistributionOutput = "${distributionsDir}/linux-x64"
+String linuxX64DistributionOutput = path(distributionsDir, "linux-x64")
 String linuxX64DistributionName = "${appName}-linux-x64.tar.gz"
-String windows64DistributionOutput = "${distributionsDir}/windows-x64"
+String windows64DistributionOutput = path(distributionsDir, "windows-x64")
 String windows64DistributionName = "${appName}-windows-x64.zip"
-String windows32DistributionOutput = "${distributionsDir}/windows-x86_32"
+String windows32DistributionOutput = path(distributionsDir, "windows-x86_32")
 String windows32DistributionName = "${appName}-windows-x86_32.zip"
-String macosX64DistributionOutput = "${distributionsDir}/macos-x64"
+String macosX64DistributionOutput = path(distributionsDir, "macos-x64")
 String macosX64DistributionName = "${appName}-macos-x64.tar.gz"
-String macosArm64DistributionOutput = "${distributionsDir}/macos-aarch64"
+String macosArm64DistributionOutput = path(distributionsDir, "macos-aarch64")
 String macosArm64DistributionName = "${appName}-macos-aarch64.tar.gz"
 String javaReleaseVersion = "17"
 
@@ -68,7 +72,7 @@ dependencies {
 
 	// utility stuff
 	implementation 'com.google.guava:guava:31.1-jre'
-	runtimeOnly 'org.apache.logging.log4j:log4j-core:2.20.0'
+	// runtimeOnly 'org.apache.logging.log4j:log4j-core:2.20.0'
 
 	// testing stuff
 	testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
@@ -109,7 +113,7 @@ tasks.register('cleanSOs', Delete) {
 	delete fileTree(dir: project.projectDir, include: '*.so')
 }
 tasks.register('cleanBin', Delete) {
-	delete "${project.projectDir}/bin"
+	delete path("${project.projectDir}", "bin")
 }
 
 spotless {
@@ -123,8 +127,8 @@ spotless {
 
 	java {
 		target fileTree('.') {
-			include '**/*.java'
-			exclude '**/build/**', '**/build-*/**', '**/bin/**'
+			include path('**', '*.java')
+			exclude path('**', 'build', '**'), path('**', 'build-*', '**'), path('**', 'bin', '**')
 		}
 		removeUnusedImports()
 		formatAnnotations()
@@ -232,7 +236,7 @@ tasks.register('decompile', JavaExec) {
 	dependsOn([downloadBCV, shadowJar])
 	group 'Utilities'
 	description 'Decompiles the fat jar'
-	classpath "${toolsDir}/bcv.jar"
+	classpath path(toolsDir, "bcv.jar")
 	args = [
 		shadowJarName
 	]
@@ -261,19 +265,19 @@ tasks.register('shadowJar', ProGuardTask) {
 	description 'Obfuscates the fat Jar with Proguard'
 	injars "${fatJarName}"
 	outjars "${shadowJarName}"
-	configuration "${project.rootDir}/conf/proguard.conf"
+	configuration path("${project.rootDir}", "conf", "proguard.conf")
 
 	doFirst {
 		// Automatically handle the Java version of this build.
 		if (System.getProperty('java.version').startsWith('1.')) {
 			// Before Java 9, the runtime classes were packaged in a single jar file.
-			libraryjars "${System.getProperty('java.home')}/lib/rt.jar"
+			libraryjars path("${System.getProperty('java.home')}", "lib", "rt.jar")
 		} else {
 			// As of Java 9, the runtime classes are packaged in modular jmod files.
 			for(String module : detectModules.detectedModules.split(",")) {
-				libraryjars "${System.getProperty('java.home')}/jmods/${module}.jmod", jarfilter: '!**.jar', filter: '!module-info.class'
+				libraryjars path("${System.getProperty('java.home')}", "jmods", "${module}.jmod"), jarfilter: '!**.jar', filter: '!module-info.class'
 			}
-			// libraryjars "${System.getProperty('java.home')}/jmods/java.logging.jmod", jarfilter: '!**.jar', filter: '!module-info.class'
+			// libraryjars path("${System.getProperty('java.home')}", "jmods", "java.logging.jmod"), jarfilter: '!**.jar', filter: '!module-info.class'
 		}
 	}
 
@@ -287,15 +291,16 @@ tasks.register('shadowJar', ProGuardTask) {
 
 tasks.register('downloadPackr', Download) {
 	src "https://github.com/libgdx/packr/releases/download/4.0.0/packr-all-4.0.0.jar"
-	dest new File(toolsDir, '/packr.jar')
+	dest new File(path(toolsDir, 'packr.jar'))
 	overwrite false
 }
 
 tasks.register('prepareLinuxX64Distribution', JavaExec) {
 	dependsOn([shadowJar, downloadPackr])
 	group 'distribution'
-	classpath './build/tools/packr.jar'
+	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
+		'--verbose',
 		'--platform', 'linux64',
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_linux_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
@@ -303,8 +308,8 @@ tasks.register('prepareLinuxX64Distribution', JavaExec) {
 		'--classpath', "${shadowJarName}",
 		'--mainclass', "${mainClassName}",
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
-		'--resources', 'src/main/resources',
-		'--icon', "src/main/resources/images/icon.png",
+		'--resources', path('src', 'main', 'resources'),
+		'--icon', path('src', 'main', 'resources', 'images', 'icon.png'),
 		'--output', "${linuxX64DistributionOutput}"
 	]
 }
@@ -322,25 +327,26 @@ tasks.register('buildLinuxX64', Zip) {
 		fileMode 0755
 	}
 	doLast {
-		println "Linux distribution is ${distributionsDir}/${linuxX64DistributionName}"
-		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxX64DistributionName}").length() / 1024 / 1024)
+		println "Linux x64 distribution is " + path(distributionsDir, linuxX64DistributionName)
+		println String.format("Linux x64 distribution size: %.3f MB", new File(path(distributionsDir, linuxX64DistributionName)).length() / 1024 / 1024)
 	}
 }
 
 tasks.register('prepareLinuxArm64Distribution', JavaExec) {
 	dependsOn([shadowJar, downloadPackr])
 	group 'distribution'
-	classpath './build/tools/packr.jar'
+	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
+		'--verbose',
 		'--platform', 'linux64',
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_aarch64_linux_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', "${shadowJarName}",
-		'--mainclass', "${mainClassName}",
+		'--classpath', shadowJarName,
+		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
-		'--resources', 'src/main/resources',
-		'--icon', "src/main/resources/images/icon.png",
+		'--resources', path('src', 'main', 'resources'),
+		'--icon', path('src', 'main', 'resources', 'images', 'icon.png'),
 		'--output', "${linuxArm64DistributionOutput}"
 	]
 }
@@ -358,25 +364,26 @@ tasks.register('buildLinuxArm64', Zip) {
 		fileMode 0755
 	}
 	doLast {
-		println "Linux distribution is ${distributionsDir}/${linuxArm64DistributionName}"
-		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxArm64DistributionName}").length() / 1024 / 1024)
+		println "Linux aarch64 distribution is " + path(distributionsDir, linuxArm64DistributionName)
+		println String.format("Linux aarch64 distribution size: %.3f MB", new File(path(distributionsDir, linuxArm64DistributionName)).length() / 1024 / 1024)
 	}
 }
 
 tasks.register('prepareLinuxArm32Distribution', JavaExec) {
 	dependsOn([shadowJar, downloadPackr])
 	group 'distribution'
-	classpath './build/tools/packr.jar'
+	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
+		'--verbose',
 		'--platform', 'linux64',
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_arm_linux_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', "${shadowJarName}",
-		'--mainclass', "${mainClassName}",
+		'--classpath', shadowJarName,
+		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
-		'--resources', 'src/main/resources',
-		'--icon', "src/main/resources/images/icon.png",
+		'--resources', path('src', 'main', 'resources'),
+		'--icon', path('src', 'main', 'resources', 'images', 'icon.png'),
 		'--output', "${linuxArm32DistributionOutput}"
 	]
 }
@@ -394,24 +401,25 @@ tasks.register('buildLinuxArm32', Zip) {
 		fileMode 0755
 	}
 	doLast {
-		println "Linux distribution is ${distributionsDir}/${linuxArm32DistributionName}"
-		println String.format("Linux distribution size: %.3f MB", new File("${distributionsDir}/${linuxArm32DistributionName}").length() / 1024 / 1024)
+		println "Linux arm distribution is " + path(distributionsDir, linuxArm32DistributionName)
+		println String.format("Linux arm distribution size: %.3f MB", new File(path(distributionsDir, linuxArm32DistributionName)).length() / 1024 / 1024)
 	}
 }
 
 tasks.register('prepareWindows64Distribution', JavaExec) {
 	dependsOn([shadowJar, downloadPackr])
 	group 'distribution'
-	classpath './build/tools/packr.jar'
+	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
+		'--verbose',
 		'--platform', 'windows64',
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_windows_hotspot_17.0.7_7.zip",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', "${shadowJarName}",
-		'--mainclass', "${mainClassName}",
-		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
-		'--resources', 'src/main/resources',
+		'--classpath', shadowJarName,
+		'--mainclass', mainClassName,
+		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\resources', "XX:+TieredCompilation",
+		'--resources', path('src', 'main', 'resources'),
 		'--output', "${windows64DistributionOutput}"
 	]
 }
@@ -429,24 +437,25 @@ tasks.register('buildWindows64', Zip) {
 		fileMode 0755
 	}
 	doLast {
-		println "Windows distribution is ${distributionsDir}/${windows64DistributionName}"
-		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${windows64DistributionName}").length() / 1024 / 1024)
+		println "Windows x64 distribution is " + path(distributionsDir, windows64DistributionName)
+		println String.format("Windows x64 distribution size: %.3f MB", new File(path(distributionsDir, windows64DistributionName)).length() / 1024 / 1024)
 	}
 }
 
 tasks.register('prepareWindows32Distribution', JavaExec) {
 	dependsOn([shadowJar, downloadPackr])
 	group 'distribution'
-	classpath './build/tools/packr.jar'
+	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
+		'--verbose',
 		'--platform', 'windows64',
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x86-32_windows_hotspot_17.0.7_7.zip",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', "${shadowJarName}",
-		'--mainclass', "${mainClassName}",
-		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
-		'--resources', 'src/main/resources',
+		'--classpath', shadowJarName,
+		'--mainclass', mainClassName,
+		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\resources', "XX:+TieredCompilation",
+		'--resources', path('src', 'main', 'resources'),
 		'--output', "${windows32DistributionOutput}"
 	]
 }
@@ -464,25 +473,26 @@ tasks.register('buildWindows32', Zip) {
 		fileMode 0755
 	}
 	doLast {
-		println "Windows distribution is ${distributionsDir}/${windows32DistributionName}"
-		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${windows32DistributionName}").length() / 1024 / 1024)
+		println "Windows x86 distribution is " + path(distributionsDir, windows32DistributionName)
+		println String.format("Windows x86 distribution size: %.3f MB", new File(path(distributionsDir, windows32DistributionName)).length() / 1024 / 1024)
 	}
 }
 
 tasks.register('prepareMacosX64Distribution', JavaExec) {
 	dependsOn([shadowJar, downloadPackr])
 	group 'distribution'
-	classpath './build/tools/packr.jar'
+	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
+		'--verbose',
 		'--platform', 'mac',
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_mac_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', "${shadowJarName}",
-		'--mainclass', "${mainClassName}",
+		'--classpath', shadowJarName,
+		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
-		'--resources', 'src/main/resources',
-		'--output', "${macosX64DistributionOutput}"
+		'--resources', path('src', 'main', 'resources'),
+		'--output', macosX64DistributionOutput
 	]
 }
 
@@ -499,25 +509,26 @@ tasks.register('buildMacosX64', Zip) {
 		fileMode 0755
 	}
 	doLast {
-		println "Windows distribution is ${distributionsDir}/${macosX64DistributionName}"
-		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${macosX64DistributionName}").length() / 1024 / 1024)
+		println "MacOS x64 distribution is " + path(distributionsDir, macosX64DistributionName)
+		println String.format("MacOS x64 distribution size: %.3f MB", new File(path(distributionsDir, macosX64DistributionName)).length() / 1024 / 1024)
 	}
 }
 
 tasks.register('prepareMacosArm64Distribution', JavaExec) {
 	dependsOn([shadowJar, downloadPackr])
 	group 'distribution'
-	classpath './build/tools/packr.jar'
+	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
+		'--verbose',
 		'--platform', 'mac',
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', "${shadowJarName}",
-		'--mainclass', "${mainClassName}",
+		'--classpath', shadowJarName,
+		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
-		'--resources', 'src/main/resources',
-		'--output', "${macosArm64DistributionOutput}"
+		'--resources', path('src', 'main', 'resources'),
+		'--output', macosArm64DistributionOutput
 	]
 }
 
@@ -534,8 +545,8 @@ tasks.register('buildMacosArm64', Zip) {
 		fileMode 0755
 	}
 	doLast {
-		println "Windows distribution is ${distributionsDir}/${macosArm64DistributionName}"
-		println String.format("Windows distribution size: %.3f MB", new File("${distributionsDir}/${macosArm64DistributionName}").length() / 1024 / 1024)
+		println "MacOS aarch64 distribution is " + path(distributionsDir, macosArm64DistributionName)
+		println String.format("MacOS aarch64 distribution size: %.3f MB", new File(path(distributionsDir, macosArm64DistributionName)).length() / 1024 / 1024)
 	}
 }
 
@@ -554,17 +565,17 @@ static def getDate() {
 
 tasks.register('downloadAsyncProfiler', Download) {
 	src "https://github.com/async-profiler/async-profiler/releases/download/v${asyncProfilerVersion}/async-profiler-${asyncProfilerVersion}-linux-x64.tar.gz"
-	dest new File(toolsDir, "async-profiler.tar.gz")
+	dest new File(path(toolsDir, "async-profiler.tar.gz"))
 	overwrite false
 }
 
 tasks.register('asyncProfiler', Copy) {
 	dependsOn downloadAsyncProfiler
 	from tarTree(downloadAsyncProfiler.dest)
-	into "${buildDir}/async-profiler/"
+	into path("${buildDir}", "async-profiler")
 	includeEmptyDirs(false)
 	ext {
-		profiler = "${buildDir}/async-profiler/async-profiler-${asyncProfilerVersion}-linux-x64/build/libasyncProfiler.so"
+		profiler = path("${buildDir}", "async-profiler", "async-profiler-${asyncProfilerVersion}-linux-x64", "build", "libasyncProfiler.so")
 	}
 }
 
@@ -572,9 +583,9 @@ tasks.register('flamegraph', JavaExec) {
 	dependsOn([asyncProfiler, fatJar])
 	group 'Utilities'
 	description 'Runs the app with async-profiler attached and generates a flamegraph'
-	def flamegraphFile = "${buildDir}/flamegraphs/flamegraph-cpu-${getDate()}.html"
+	def flamegraphFile = path("${buildDir}", "flamegraphs", "flamegraph-cpu-${getDate()}.html")
 	doFirst {
-		mkdir "${buildDir}/flamegraphs"
+		mkdir path("${buildDir}", "flamegraphs")
 	}
 	classpath fatJarName
 	args = []
