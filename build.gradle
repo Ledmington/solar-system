@@ -88,7 +88,7 @@ run {
 
 tasks.withType(JavaCompile).configureEach {
 	options.compilerArgs << '-Xdiags:verbose'
-	options.compilerArgs << '-Xlint:all,-serial,-processing'
+	options.compilerArgs << '-Xlint:all'
 	options.compilerArgs << '-Werror'
 	options.deprecation = true
 	options.encoding = 'UTF-8'
@@ -181,8 +181,8 @@ testlogger {
 	showOnlySlow false
 
 	showStandardStreams false
-	showPassedStandardStreams true
-	showSkippedStandardStreams true
+	showPassedStandardStreams false
+	showSkippedStandardStreams false
 	showFailedStandardStreams true
 }
 
