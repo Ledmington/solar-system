@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
@@ -72,6 +73,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private final String skyBoxFileName = Constants.MODELS_FOLDER + "/skybox.obj";
     private ModelInstance skyBox;
     private final BitmapFont font = toBeDisposed(new BitmapFont());
+    private final float solarsystemWidth = (float) (SolarSystem.PLUTO.position().x * scale);
 
     public MainScreen() {
         environment = new Environment();
@@ -202,6 +204,10 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         for (final Entry<Body, Vector2> entry : bodyToLabelPosition.entrySet()) {
             final Body b = entry.getKey();
             final Vector2 labelPosition = entry.getValue();
+            final ModelInstance instance = bodiesToModels.get(b);
+            if (!isVisible(camera, instance)) {
+                continue;
+            }
 
             // draw red label
             spriteBatch.begin();
@@ -222,6 +228,23 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             // draw circle around body
             shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, circleRadius);
             shapeRenderer.end();
+
+            // if the mouse is over a planet we highlight it
+            if (bodyPositionOnScreen.dst(Gdx.input.getX(), viewport.getScreenHeight() - Gdx.input.getY())
+                    < circleRadius) {
+                Gdx.gl.glEnable(GL30.GL_BLEND);
+                Gdx.gl.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
+                shapeRenderer.begin(ShapeType.Filled);
+                shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.6f);
+                shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, circleRadius);
+                shapeRenderer.end();
+                Gdx.gl.glDisable(GL30.GL_BLEND);
+
+                // if we click on the planet we look at it
+                if (Gdx.input.isTouched()) {
+                    camera.lookAt(b.position().cpy().scl((float) scale));
+                }
+            }
         }
 
         final Body closestBody = SolarSystem.planets().stream()
@@ -257,11 +280,116 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                 20.0f);
         spriteBatch.end();
 
+        drawMiniMap();
+
         drawZoomSlider();
 
         handleInputs();
 
         bodyToLabelPosition.clear();
+    }
+
+    private void drawMiniMap() {
+        final float minimapWidth = Math.min(viewport.getScreenWidth() * 0.2f, viewport.getScreenHeight() * 0.2f);
+        final float minimapHeight = minimapWidth;
+        final float minimapXPosition = viewport.getScreenWidth() - minimapWidth;
+        final float minimapYPosition = viewport.getScreenHeight() - minimapHeight;
+        final float minimapXCenter = (2 * minimapXPosition + minimapWidth) / 2.0f;
+        final float minimapYCenter = (2 * minimapYPosition + minimapHeight) / 2.0f;
+
+        final Function<Float, Float> fromWorldToMinimapX = f -> MathUtils.map(
+                -solarsystemWidth, solarsystemWidth, minimapXPosition, minimapXPosition + minimapWidth, f);
+        final Function<Float, Float> fromWorldToMinimapY = f -> MathUtils.map(
+                -solarsystemWidth, solarsystemWidth, minimapYPosition, minimapYPosition + minimapHeight, f);
+
+        Gdx.gl.glEnable(GL30.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
+        shapeRenderer.begin(ShapeType.Filled);
+        shapeRenderer.setColor(0.0f, 0.0f, 0.0f, 0.3f);
+        shapeRenderer.rect(minimapXPosition, minimapYPosition, minimapWidth, minimapHeight);
+        // drawing the sun
+        shapeRenderer.setColor(Color.YELLOW);
+        shapeRenderer.circle(minimapXCenter, minimapYCenter, 6.0f);
+        // drawing mercury
+        shapeRenderer.setColor(Color.RED);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.MERCURY.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.MERCURY.position().y * scale)),
+                2.0f);
+        // drawing venus
+        shapeRenderer.setColor(Color.CYAN);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.VENUS.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.VENUS.position().y * scale)),
+                2.0f);
+        // drawing the earth
+        shapeRenderer.setColor(Color.BLUE);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.EARTH.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.EARTH.position().y * scale)),
+                2.0f);
+        // drawing mars
+        shapeRenderer.setColor(Color.RED);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.MARS.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.MARS.position().y * scale)),
+                2.0f);
+        // drawing jupiter
+        shapeRenderer.setColor(Color.RED);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.JUPITER.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.JUPITER.position().y * scale)),
+                3.0f);
+        // drawing saturn
+        shapeRenderer.setColor(Color.CYAN);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.SATURN.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.SATURN.position().y * scale)),
+                3.0f);
+        // drawing uranus
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.URANUS.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.URANUS.position().y * scale)),
+                3.0f);
+        // drawing pluto
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.circle(
+                fromWorldToMinimapX.apply((float) (SolarSystem.PLUTO.position().x * scale)),
+                fromWorldToMinimapY.apply((float) (SolarSystem.PLUTO.position().y * scale)),
+                3.0f);
+        shapeRenderer.end();
+
+        // drawing camera
+        final float fieldOfViewX =
+                (float) viewport.getScreenWidth() / (float) viewport.getScreenHeight() * camera.fieldOfView;
+        final Vector3 leftSide = camera.direction
+                .cpy()
+                .rotate(camera.up, -fieldOfViewX / 2)
+                .setLength(10_000.0f)
+                .sub(camera.position);
+        final Vector3 rightSide = camera.direction
+                .cpy()
+                .rotate(camera.up, fieldOfViewX / 2)
+                .setLength(10_000.0f)
+                .sub(camera.position);
+
+        logger.debug("%f; %f - %f; %f", leftSide.x, leftSide.y, rightSide.x, rightSide.y);
+
+        shapeRenderer.begin(ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.line(
+                fromWorldToMinimapX.apply(camera.position.x),
+                fromWorldToMinimapY.apply(camera.position.y),
+                fromWorldToMinimapX.apply(leftSide.x),
+                fromWorldToMinimapY.apply(leftSide.y));
+        shapeRenderer.line(
+                fromWorldToMinimapX.apply(camera.position.x),
+                fromWorldToMinimapY.apply(camera.position.y),
+                fromWorldToMinimapX.apply(rightSide.x),
+                fromWorldToMinimapY.apply(rightSide.y));
+        shapeRenderer.end();
+        Gdx.gl.glDisable(GL30.GL_BLEND);
     }
 
     private void setCameraFOV(final float newFOV) {
@@ -292,6 +420,13 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                 && mouseY <= zoomSliderYPosition + zoomSliderHeight + zoomSliderWidth / 2) {
             zoomSliderTransparency = 0.4f;
             zoomSliderKnobTransparency = 1.0f;
+
+            if (Gdx.input.isTouched()) {
+                // zoom slider is clicked
+                final float newFOV = MathUtils.map(
+                        zoomSliderYPosition + zoomSliderHeight, zoomSliderYPosition, minFOV, maxFOV, mouseY);
+                setCameraFOV(newFOV);
+            }
         } else {
             zoomSliderTransparency = 0.2f;
             zoomSliderKnobTransparency = 0.8f;
@@ -309,13 +444,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         shapeRenderer.circle(zoomSliderXCenter, zoomSliderKnobYPosition, zoomSliderKnobRadius, 10);
         shapeRenderer.end();
         Gdx.gl.glDisable(GL30.GL_BLEND);
-
-        if (Gdx.input.isTouched()) {
-            // zoom slider is clicked
-            final float newFOV =
-                    MathUtils.map(zoomSliderYPosition + zoomSliderHeight, zoomSliderYPosition, minFOV, maxFOV, mouseY);
-            setCameraFOV(newFOV);
-        }
     }
 
     private void handleInputs() {
@@ -348,39 +476,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         if (Gdx.input.isKeyPressed(Keys.CONTROL_LEFT) || Gdx.input.isKeyPressed(Keys.CONTROL_RIGHT)) {
             camera.position.sub(camera.up.cpy().scl(cameraSpeed));
             cameraSpeed += initialCameraSpeed;
-        }
-
-        // if the mouse is over a planet we highlight it
-        for (Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
-            final Body b = entry.getKey();
-            final ModelInstance instance = entry.getValue();
-            if (!isVisible(camera, instance)) {
-                continue;
-            }
-
-            final Vector2 bodyPositionOnScreen =
-                    viewport.project(new Vector2((float) (b.position().x * scale), (float) (b.position().y * scale)));
-            bodyPositionOnScreen.y = viewport.getScreenHeight() - bodyPositionOnScreen.y;
-
-            // final double distanceFromCamera = (double) camera.position.dst(b.position());
-            // final float hitboxRadius =
-            // MathUtils.clamp((float) (b.radius() * distanceFromCamera * scale), 10.0f, 100.0f);
-            final float hitboxRadius = (float) (b.radius() * scale + 10.0);
-
-            if (bodyPositionOnScreen.dst(Gdx.input.getX(), Gdx.input.getY()) < hitboxRadius) {
-                Gdx.gl.glEnable(GL30.GL_BLEND);
-                Gdx.gl.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
-                shapeRenderer.begin(ShapeType.Filled);
-                shapeRenderer.setColor(1.0f, 1.0f, 1.0f, 0.1f);
-                shapeRenderer.circle(bodyPositionOnScreen.x, bodyPositionOnScreen.y, hitboxRadius);
-                shapeRenderer.end();
-                Gdx.gl.glDisable(GL30.GL_BLEND);
-
-                // if we click on the planet we look at it
-                if (Gdx.input.isTouched()) {
-                    camera.lookAt(b.position().cpy().scl((float) scale));
-                }
-            }
         }
     }
 
