@@ -74,6 +74,9 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private ModelInstance skyBox;
     private final BitmapFont font = toBeDisposed(new BitmapFont());
     private final float solarsystemWidth = (float) (SolarSystem.PLUTO.position().x * scale);
+    private float mouseX;
+    private float mouseY;
+    private boolean isTouched = false;
 
     public MainScreen() {
         environment = new Environment();
@@ -100,13 +103,13 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             if (b.hasTexture()) {
                 logger.debug(
                         "adding texture of %s (%s) to be loaded",
-                        b.name().get(), b.texture().get());
-                assetManager.load(b.texture().get(), Texture.class);
+                        b.name().orElseThrow(), b.texture().orElseThrow());
+                assetManager.load(b.texture().orElseThrow(), Texture.class);
                 material = new Material();
             } else {
-                logger.debug(b.name().get() + " has no texture, using its color");
+                logger.debug(b.name().orElseThrow() + " has no texture, using its color");
                 material = new Material(
-                        new ColorAttribute(ColorAttribute.Diffuse, b.color().get()));
+                        new ColorAttribute(ColorAttribute.Diffuse, b.color().orElseThrow()));
             }
             final Model model = toBeDisposed(new ModelBuilder()
                     .createSphere(
@@ -132,14 +135,14 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
     private void doneLoading() {
         skyBox = new ModelInstance(assetManager.get(skyBoxFileName, Model.class));
 
-        SolarSystem.planets().stream().filter(b -> b.hasTexture()).forEach(b -> {
+        SolarSystem.planets().stream().filter(Body::hasTexture).forEach(b -> {
             bodiesToModels
                     .get(b)
                     .materials
                     .first()
                     .set(new TextureAttribute(
                             TextureAttribute.Diffuse,
-                            assetManager.get(b.texture().get(), Texture.class)));
+                            assetManager.get(b.texture().orElseThrow(), Texture.class)));
         });
         loading = false;
     }
@@ -151,6 +154,11 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
     @Override
     public void render(final float delta) {
+        // set shorthand variables
+        mouseX = (float) Gdx.input.getX();
+        mouseY = (float) (viewport.getScreenHeight() - Gdx.input.getY());
+        isTouched = Gdx.input.isTouched();
+
         Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
         viewport.apply(false);
 
@@ -212,7 +220,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             // draw red label
             spriteBatch.begin();
             font.setColor(1.0f, 0.0f, 0.0f, 1.0f);
-            font.draw(spriteBatch, b.name().get(), labelPosition.x + 10, labelPosition.y + 10);
+            font.draw(spriteBatch, b.name().orElseThrow(), labelPosition.x + 10, labelPosition.y + 10);
             spriteBatch.end();
 
             final Vector3 tmp = viewport.project(
@@ -230,8 +238,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             shapeRenderer.end();
 
             // if the mouse is over a planet we highlight it
-            if (bodyPositionOnScreen.dst(Gdx.input.getX(), viewport.getScreenHeight() - Gdx.input.getY())
-                    < circleRadius) {
+            if (bodyPositionOnScreen.dst(mouseX, mouseY) < circleRadius) {
                 Gdx.gl.glEnable(GL30.GL_BLEND);
                 Gdx.gl.glBlendFunc(GL30.GL_SRC_ALPHA, GL30.GL_ONE_MINUS_SRC_ALPHA);
                 shapeRenderer.begin(ShapeType.Filled);
@@ -241,16 +248,15 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                 Gdx.gl.glDisable(GL30.GL_BLEND);
 
                 // if we click on the planet we look at it
-                if (Gdx.input.isTouched()) {
+                if (isTouched) {
                     camera.lookAt(b.position().cpy().scl((float) scale));
                 }
             }
         }
 
         final Body closestBody = SolarSystem.planets().stream()
-                .sorted(Comparator.comparing(
+                .min(Comparator.comparing(
                         b -> b.position().cpy().scl((float) scale).dst(camera.position)))
-                .findFirst()
                 .orElseThrow();
 
         final long distance = (long)
@@ -265,7 +271,8 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         font.setColor(Color.WHITE);
         font.draw(
                 spriteBatch,
-                String.format("Closest body: %s (%s km)", closestBody.name().get(), FormatUtils.thousands(distance)),
+                String.format(
+                        "Closest body: %s (%s km)", closestBody.name().orElseThrow(), FormatUtils.thousands(distance)),
                 0.0f,
                 60.0f);
         font.draw(
@@ -410,10 +417,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
         float zoomSliderTransparency;
         float zoomSliderKnobTransparency;
 
-        // shortcuts
-        final float mouseX = (float) Gdx.input.getX();
-        final float mouseY = (float) (viewport.getScreenHeight() - Gdx.input.getY());
-
         if (mouseX >= zoomSliderXCenter - zoomSliderKnobRadius
                 && mouseX <= zoomSliderXCenter + zoomSliderKnobRadius
                 && mouseY >= zoomSliderYPosition - zoomSliderWidth / 2
@@ -421,7 +424,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             zoomSliderTransparency = 0.4f;
             zoomSliderKnobTransparency = 1.0f;
 
-            if (Gdx.input.isTouched()) {
+            if (isTouched) {
                 // zoom slider is clicked
                 final float newFOV = MathUtils.map(
                         zoomSliderYPosition + zoomSliderHeight, zoomSliderYPosition, minFOV, maxFOV, mouseY);
