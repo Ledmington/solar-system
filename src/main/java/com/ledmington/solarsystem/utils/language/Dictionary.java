@@ -52,6 +52,8 @@ public final class Dictionary {
         return instance;
     }
 
+    private final String dictionaryFile =
+            String.join(File.separator, Constants.RESOURCES_DIR, Constants.DATA_FOLDER, "dictionary.csv");
     private final Map<String, Language> nameToLanguage = new HashMap<>();
     private final Map<Language, Map<String, String>> dict = new HashMap<>();
     private Language lang = Language.ENGLISH;
@@ -64,8 +66,7 @@ public final class Dictionary {
 
         long t = System.nanoTime();
         String line;
-        try (BufferedReader br = new BufferedReader(new FileReader(
-                String.join(File.separator, Constants.RESOURCES_DIR, Constants.DATA_FOLDER, "dictionary.csv")))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(dictionaryFile))) {
             final String[] languages = br.readLine().split(",");
             final List<BiConsumer<String, String>> consumers = new ArrayList<>();
             for (int i = 1; i < languages.length; i++) {

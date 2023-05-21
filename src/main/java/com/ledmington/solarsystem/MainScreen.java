@@ -105,7 +105,7 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
                 assetManager.load(b.texture().orElseThrow(), Texture.class);
                 material = new Material();
             } else {
-                logger.debug(b.name().orElseThrow() + " has no texture, using its color");
+                logger.debug("%s has no texture, using its color", b.name().orElseThrow());
                 material = new Material(
                         new ColorAttribute(ColorAttribute.Diffuse, b.color().orElseThrow()));
             }
@@ -191,15 +191,16 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
 
         modelBatch.begin(camera);
         // rendering planets
-        for (final Map.Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
+        for (final Entry<Body, ModelInstance> entry : bodiesToModels.entrySet()) {
             final Body b = entry.getKey();
             final ModelInstance instance = entry.getValue();
-            if (isVisible(camera, instance)) {
-                modelBatch.render(instance, environment);
-                final Vector3 labelPosition = viewport.project(new Vector3(
-                        b.scaledPosition().x + b.scaledRadius(), b.scaledPosition().y + b.scaledRadius(), 0.0f));
-                bodyToLabelPosition.put(b, new Vector2(labelPosition.x, labelPosition.y));
+            if (!isVisible(camera, instance)) {
+                continue;
             }
+            modelBatch.render(instance, environment);
+            final Vector3 labelPosition = viewport.project(new Vector3(
+                    b.scaledPosition().x + b.scaledRadius(), b.scaledPosition().y + b.scaledRadius(), 0.0f));
+            bodyToLabelPosition.put(b, new Vector2(labelPosition.x, labelPosition.y));
         }
         modelBatch.end();
 
@@ -207,7 +208,6 @@ public final class MainScreen extends AbstractScreen implements InputProcessor {
             final Body b = entry.getKey();
             final Vector2 labelPosition = entry.getValue();
             final ModelInstance instance = bodiesToModels.get(b);
-            logger.debug("processing %s", b.name().orElseThrow());
             if (!isVisible(camera, instance)) {
                 continue;
             }
