@@ -60,7 +60,6 @@ dependencies {
 
 	// utility stuff
 	implementation 'com.google.guava:guava:31.1-jre'
-	runtimeOnly 'org.apache.logging.log4j:log4j-core:2.20.0'
 
 	// testing stuff
 	testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
@@ -376,7 +375,7 @@ tasks.register('prepareWindows64Distribution', JavaExec) {
 		'--executable', 'solarsystem',
 		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
-		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\resources', "XX:+TieredCompilation",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\\\resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
 		'--output', "${windows64DistributionOutput}"
 	]
@@ -412,7 +411,7 @@ tasks.register('prepareWindows32Distribution', JavaExec) {
 		'--executable', 'solarsystem',
 		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
-		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\resources', "XX:+TieredCompilation",
+		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\\\resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
 		'--output', "${windows32DistributionOutput}"
 	]
