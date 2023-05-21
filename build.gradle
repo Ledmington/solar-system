@@ -1,14 +1,3 @@
-import proguard.gradle.ProGuardTask
-
-buildscript {
-	repositories {
-		mavenCentral()
-	}
-	dependencies {
-		classpath 'com.guardsquare:proguard-gradle:7.3.2'
-	}
-}
-
 plugins {
 	id 'java'
 	id 'application'
@@ -34,7 +23,6 @@ String authorMail = 'filippo.barbari@gmail.com'
 String mainClassName = 'com.ledmington.solarsystem.Launcher'
 String fatJarPath = path("${buildDir}", "libs")
 String fatJarName = path(fatJarPath, "${appName}.jar")
-String shadowJarName = path(fatJarPath, "${appName}-${version}.jar")
 String toolsDir = path("${buildDir}", "tools")
 String distributionsDir = path("${buildDir}", "distributions")
 String linuxArm64DistributionOutput = path(distributionsDir, "linux-aarch64")
@@ -72,7 +60,7 @@ dependencies {
 
 	// utility stuff
 	implementation 'com.google.guava:guava:31.1-jre'
-	// runtimeOnly 'org.apache.logging.log4j:log4j-core:2.20.0'
+	runtimeOnly 'org.apache.logging.log4j:log4j-core:2.20.0'
 
 	// testing stuff
 	testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
@@ -233,12 +221,12 @@ tasks.register('downloadBCV', Download) {
 }
 
 tasks.register('decompile', JavaExec) {
-	dependsOn([downloadBCV, shadowJar])
+	dependsOn([downloadBCV, fatJar])
 	group 'Utilities'
 	description 'Decompiles the fat jar'
 	classpath path(toolsDir, "bcv.jar")
 	args = [
-		shadowJarName
+		fatJarName
 	]
 }
 
@@ -259,36 +247,6 @@ tasks.register('detectModules', Exec) {
 	}
 }
 
-tasks.register('shadowJar', ProGuardTask) {
-	dependsOn([fatJar, detectModules])
-	group 'distribution'
-	description 'Obfuscates the fat Jar with Proguard'
-	injars "${fatJarName}"
-	outjars "${shadowJarName}"
-	configuration path("${project.rootDir}", "conf", "proguard.conf")
-
-	doFirst {
-		// Automatically handle the Java version of this build.
-		if (System.getProperty('java.version').startsWith('1.')) {
-			// Before Java 9, the runtime classes were packaged in a single jar file.
-			libraryjars path("${System.getProperty('java.home')}", "lib", "rt.jar")
-		} else {
-			// As of Java 9, the runtime classes are packaged in modular jmod files.
-			for(String module : detectModules.detectedModules.split(",")) {
-				libraryjars path("${System.getProperty('java.home')}", "jmods", "${module}.jmod"), jarfilter: '!**.jar', filter: '!module-info.class'
-			}
-			// libraryjars path("${System.getProperty('java.home')}", "jmods", "java.logging.jmod"), jarfilter: '!**.jar', filter: '!module-info.class'
-		}
-	}
-
-	verbose
-
-	doLast {
-		println "The shadow jar is ${shadowJarName}"
-		println String.format("Shadow jar size: %.3f MB", new File("${shadowJarName}").length() / 1024 / 1024)
-	}
-}
-
 tasks.register('downloadPackr', Download) {
 	src "https://github.com/libgdx/packr/releases/download/4.0.0/packr-all-4.0.0.jar"
 	dest new File(path(toolsDir, 'packr.jar'))
@@ -296,7 +254,7 @@ tasks.register('downloadPackr', Download) {
 }
 
 tasks.register('prepareLinuxX64Distribution', JavaExec) {
-	dependsOn([shadowJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
@@ -305,7 +263,7 @@ tasks.register('prepareLinuxX64Distribution', JavaExec) {
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_linux_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', "${shadowJarName}",
+		'--classpath', "${fatJarName}",
 		'--mainclass', "${mainClassName}",
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
@@ -333,7 +291,7 @@ tasks.register('buildLinuxX64', Zip) {
 }
 
 tasks.register('prepareLinuxArm64Distribution', JavaExec) {
-	dependsOn([shadowJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
@@ -342,7 +300,7 @@ tasks.register('prepareLinuxArm64Distribution', JavaExec) {
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_aarch64_linux_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', shadowJarName,
+		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
@@ -370,7 +328,7 @@ tasks.register('buildLinuxArm64', Zip) {
 }
 
 tasks.register('prepareLinuxArm32Distribution', JavaExec) {
-	dependsOn([shadowJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
@@ -379,7 +337,7 @@ tasks.register('prepareLinuxArm32Distribution', JavaExec) {
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_arm_linux_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', shadowJarName,
+		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
@@ -407,7 +365,7 @@ tasks.register('buildLinuxArm32', Zip) {
 }
 
 tasks.register('prepareWindows64Distribution', JavaExec) {
-	dependsOn([shadowJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
@@ -416,7 +374,7 @@ tasks.register('prepareWindows64Distribution', JavaExec) {
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_windows_hotspot_17.0.7_7.zip",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', shadowJarName,
+		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
@@ -443,7 +401,7 @@ tasks.register('buildWindows64', Zip) {
 }
 
 tasks.register('prepareWindows32Distribution', JavaExec) {
-	dependsOn([shadowJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
@@ -452,7 +410,7 @@ tasks.register('prepareWindows32Distribution', JavaExec) {
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x86-32_windows_hotspot_17.0.7_7.zip",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', shadowJarName,
+		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=.\\resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
@@ -479,7 +437,7 @@ tasks.register('buildWindows32', Zip) {
 }
 
 tasks.register('prepareMacosX64Distribution', JavaExec) {
-	dependsOn([shadowJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
@@ -488,7 +446,7 @@ tasks.register('prepareMacosX64Distribution', JavaExec) {
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_x64_mac_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', shadowJarName,
+		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
@@ -515,7 +473,7 @@ tasks.register('buildMacosX64', Zip) {
 }
 
 tasks.register('prepareMacosArm64Distribution', JavaExec) {
-	dependsOn([shadowJar, downloadPackr])
+	dependsOn([fatJar, downloadPackr])
 	group 'distribution'
 	classpath path('.', 'build', 'tools', 'packr.jar')
 	args = [
@@ -524,7 +482,7 @@ tasks.register('prepareMacosArm64Distribution', JavaExec) {
 		'--jdk', "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.7_7.tar.gz",
 		'--useZgcIfSupportedOs',
 		'--executable', 'solarsystem',
-		'--classpath', shadowJarName,
+		'--classpath', fatJarName,
 		'--mainclass', mainClassName,
 		'--vmargs', 'Xmx1G', 'Dresources.dir=./resources', "XX:+TieredCompilation",
 		'--resources', path('src', 'main', 'resources'),
